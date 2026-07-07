@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Student_Management_System.Models;
+using Student_Management_System.Models.Enum;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,9 +32,14 @@ builder.Services.AddAuthentication().AddJwtBearer(options =>
     
 });
 
-//builder.Services.AddDbContext<AppDbContext>(options =>
-//    options.UseNpgsql(
-//        builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), o =>
+    {
+        o.MapEnum<AttendanceStatus>("attendance_status");
+        o.MapEnum<EnrollmentStatus>("enrollment_status");
+    });
+});
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
