@@ -1,10 +1,20 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Student_Management_System.Config;
+using Student_Management_System.Configs.HttpContext;
+using Student_Management_System.Integrations.supabase;
 using Student_Management_System.Models;
 using Student_Management_System.Models.Enum;
+using System.Data;
+using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // Add services to the container.
 var url = builder.Configuration["SUPABASE_URL"];
@@ -18,18 +28,67 @@ await supabase.InitializeAsync();
 
 builder.Services.AddAuthorization();
 
-var bytes = Encoding.UTF8.GetBytes(builder.Configuration["Authentication:JwtSecret"]!);
-
-builder.Services.AddAuthentication().AddJwtBearer(options =>
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
 {
+    options.Authority = builder.Configuration["Authentication:ValidIssuer"];
+    options.Audience = builder.Configuration["Authentication:ValidAudience"];
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(bytes),
-        ValidAudience = builder.Configuration["Authentication:ValidAudience"],
-        ValidIssuer = builder.Configuration["Authentication:ValidIssuer"],
+        ValidateAudience = true,
+        ValidateIssuer = true,
     };
-    
+
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = context =>
+        {
+            var identity = (ClaimsIdentity)context.Principal!.Identity!;
+
+            var claims = context.Principal!;
+
+            var userId = Guid.Parse(
+                claims.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? claims.FindFirst("sub")!.Value);
+
+            var email = claims.FindFirst(ClaimTypes.Email)?.Value
+                        ?? claims.FindFirst("email")?.Value;
+
+            string? roleString = null;
+
+                var appMetadata =
+                    claims.FindFirst("app_metadata")?.Value;
+
+                if (!string.IsNullOrEmpty(appMetadata))
+                {
+                    using var doc = JsonDocument.Parse(appMetadata);
+
+                    if (doc.RootElement.TryGetProperty("role", out var role))
+                    {
+                        roleString = role.GetString();
+                    }
+                }
+
+            if(!string.IsNullOrEmpty(roleString))
+            {
+                identity.AddClaim(new Claim(ClaimTypes.Role, roleString));
+            }
+
+            if (!Enum.TryParse<Role>(roleString, out var roleEnum))
+            {
+                context.Fail("Role is not valid.");
+                return Task.CompletedTask;
+            }
+
+            context.HttpContext.Items["CurrentUser"] = new CurrentUser
+            {
+                UserId = userId,
+                Email = email ?? "",
+                Role = roleEnum
+            };
+
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -40,6 +99,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         o.MapEnum<EnrollmentStatus>("enrollment_status");
     });
 });
+
+builder.Services.Configure<SupabaseOptions>(
+    builder.Configuration.GetSection("Supabase"));
+
+builder.Services.AddTransient<SupabaseAuthHandler>();
+
+builder.Services.AddHttpClient<ISupabaseAuthClient, SupabaseAuthClient>()
+    .AddHttpMessageHandler<SupabaseAuthHandler>();
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -54,6 +121,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 
