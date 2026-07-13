@@ -71,6 +71,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.LessonId).HasColumnName("lesson_id");
             entity.Property(e => e.Note).HasColumnName("note");
             entity.Property(e => e.StudentId).HasColumnName("student_id");
+            entity.Property(e => e.Status).HasColumnName("status");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
@@ -135,6 +136,7 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");
             entity.Property(e => e.StudentId).HasColumnName("student_id");
+            entity.Property(e => e.Status).HasColumnName("status");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");

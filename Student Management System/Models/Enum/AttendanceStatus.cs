@@ -4,6 +4,7 @@
     {
         PRESENT,
         ABSENT,
-        LATE
+        LATE,
+        EXCUSED
     }
 }

@@ -6,6 +6,10 @@ using Student_Management_System.Configs.HttpContext;
 using Student_Management_System.Integrations.supabase;
 using Student_Management_System.Models;
 using Student_Management_System.Models.Enum;
+using Student_Management_System.Repositories;
+using Student_Management_System.Repositories.Interfaces;
+using Student_Management_System.Services;
+using Student_Management_System.Services.Interfaces;
 using System.Data;
 using System.Security.Claims;
 using System.Text;
@@ -111,6 +115,29 @@ builder.Services.AddHttpClient<ISupabaseAuthClient, SupabaseAuthClient>()
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:3000", "http://127.0.0.1:3000")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+builder.Services.AddScoped<IClassroomRepository, ClassroomRepository>();
+builder.Services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
+builder.Services.AddScoped<ILessonRepository, LessonRepository>();
+builder.Services.AddScoped<IParentRepository, ParentRepository>();
+builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
+
+builder.Services.AddScoped<IClassRegistrationService, ClassRegistrationService>();
+builder.Services.AddScoped<IClassroomService, ClassroomService>();
+builder.Services.AddScoped<ILessonService, LessonService>();
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<ITeacherService, TeacherService>();
 
 var app = builder.Build();
 
@@ -121,6 +148,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("Frontend");
 
 app.UseAuthentication();
 
