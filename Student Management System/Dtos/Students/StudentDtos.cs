@@ -12,6 +12,7 @@ public record StudentResponse(
     string? CurrentClass);
 
 public record ChildSearchResponse(
+    long StudentId,
     string ChildName,
     string DateOfBirth,
     string ParentPhone,

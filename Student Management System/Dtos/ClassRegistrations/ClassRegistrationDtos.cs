@@ -9,3 +9,15 @@ public record ClassRegistrationRequest(
     string? Note);
 
 public record ClassRegistrationResponse(string Fullname, string Classroom, string Status);
+
+public record ClassRegistrationItemResponse(
+    long Id,
+    long StudentId,
+    long ClassroomId,
+    string ChildName,
+    string ParentName,
+    string ParentPhone,
+    string RequestedClass,
+    DateOnly EnrollDate,
+    string SubmittedAt,
+    string Status);

@@ -27,6 +27,9 @@ public class ClassroomService : IClassroomService
             Name = request.Name.Trim(),
             TeacherId = request.TeacherId,
             TuitionFee = request.TuitionFee,
+            AgeGroup = string.IsNullOrWhiteSpace(request.AgeGroup) ? null : request.AgeGroup.Trim(),
+            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+            Capacity = request.Capacity <= 0 ? 20 : request.Capacity,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -34,7 +37,16 @@ public class ClassroomService : IClassroomService
         _classrooms.Add(classroom);
         await _classrooms.SaveChangesAsync();
 
-        return new ClassroomResponse(classroom.Id, classroom.Name, classroom.TuitionFee, classroom.TeacherId, null, 0);
+        return new ClassroomResponse(
+            classroom.Id,
+            classroom.Name,
+            classroom.TuitionFee,
+            classroom.TeacherId,
+            null,
+            0,
+            classroom.AgeGroup,
+            classroom.Description,
+            classroom.Capacity);
     }
 
     public async Task<bool> UpdateAsync(long id, UpdateClassroomRequest request)
@@ -48,6 +60,9 @@ public class ClassroomService : IClassroomService
         classroom.Name = request.Name.Trim();
         classroom.TeacherId = request.TeacherId;
         classroom.TuitionFee = request.TuitionFee;
+        classroom.AgeGroup = string.IsNullOrWhiteSpace(request.AgeGroup) ? null : request.AgeGroup.Trim();
+        classroom.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+        classroom.Capacity = request.Capacity <= 0 ? 20 : request.Capacity;
         classroom.UpdatedAt = DateTime.UtcNow;
 
         await _classrooms.SaveChangesAsync();

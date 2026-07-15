@@ -32,7 +32,7 @@ public class StudentRepository : IStudentRepository
                 student.Parent == null ? null : student.Parent.Fullname,
                 student.Parent == null ? null : student.Parent.Phone,
                 student.Enrollments
-                    .Where(enrollment => !enrollment.IsDeleted)
+                    .Where(enrollment => !enrollment.IsDeleted && enrollment.Status == EnrollmentStatus.ACTIVE)
                     .Select(enrollment => enrollment.Classroom.Name)
                     .FirstOrDefault()));
 
@@ -65,11 +65,12 @@ public class StudentRepository : IStudentRepository
                 student.Parent.Phone == parentPhone)
             .Select(student => new
             {
+                student.Id,
                 student.Fullname,
                 student.Dob,
                 ParentPhone = student.Parent == null ? "" : student.Parent.Phone,
                 CurrentClass = student.Enrollments
-                    .Where(enrollment => !enrollment.IsDeleted)
+                    .Where(enrollment => !enrollment.IsDeleted && enrollment.Status == EnrollmentStatus.ACTIVE)
                     .Select(enrollment => enrollment.Classroom.Name)
                     .FirstOrDefault(),
                 TotalAttendances = student.Attendances.Count(attendance => !attendance.IsDeleted),
@@ -84,6 +85,7 @@ public class StudentRepository : IStudentRepository
 
         return students
             .Select(student => new ChildSearchResponse(
+                student.Id,
                 student.Fullname,
                 student.Dob == null ? "" : student.Dob.Value.ToString("yyyy-MM-dd"),
                 student.ParentPhone,
