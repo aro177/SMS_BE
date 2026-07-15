@@ -73,7 +73,7 @@ public class StudentRepository : IStudentRepository
                     .Select(enrollment => enrollment.Classroom.Name)
                     .FirstOrDefault(),
                 TotalAttendances = student.Attendances.Count(attendance => !attendance.IsDeleted),
-                PresentAttendances = student.Attendances.Count(attendance => !attendance.IsDeleted && attendance.Status == AttendanceStatus.PRESENT),
+                PresentAttendances = student.Attendances.Count(attendance => !attendance.IsDeleted && attendance.Status.ToString().ToLower() == AttendanceStatus.PRESENT.ToString().ToLower()),
                 LatestNote = student.Attendances
                     .Where(attendance => !attendance.IsDeleted && attendance.Note != null)
                     .OrderByDescending(attendance => attendance.CreatedAt)
