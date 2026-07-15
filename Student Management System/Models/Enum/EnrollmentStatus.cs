@@ -2,6 +2,7 @@
 {
     public enum EnrollmentStatus
     {
+        PENDING,
         ACTIVE, 
         SUSPENDED, 
         DROPPED,

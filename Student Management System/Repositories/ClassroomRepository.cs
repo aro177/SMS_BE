@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Student_Management_System.Common.Pagination;
 using Student_Management_System.Dtos.Classrooms;
 using Student_Management_System.Models;
+using Student_Management_System.Models.Enum;
 using Student_Management_System.Repositories.Interfaces;
 
 namespace Student_Management_System.Repositories;
@@ -27,7 +28,10 @@ public class ClassroomRepository : IClassroomRepository
                 classroom.TuitionFee,
                 classroom.TeacherId,
                 classroom.Teacher == null ? null : classroom.Teacher.Fullname,
-                classroom.Enrollments.Count(enrollment => !enrollment.IsDeleted)));
+                classroom.Enrollments.Count(enrollment => !enrollment.IsDeleted && enrollment.Status == EnrollmentStatus.ACTIVE),
+                classroom.AgeGroup,
+                classroom.Description,
+                classroom.Capacity));
 
         var total = await query.CountAsync();
         var items = await query.Skip(pagination.Skip).Take(pagination.PageSize).ToListAsync();

@@ -44,7 +44,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("auth", "oauth_registration_type", new[] { "dynamic", "manual" })
             .HasPostgresEnum("auth", "oauth_response_type", new[] { "code" })
             .HasPostgresEnum("auth", "one_time_token_type", new[] { "confirmation_token", "reauthentication_token", "recovery_token", "email_change_token_new", "email_change_token_current", "phone_change_token" })
-            .HasPostgresEnum("enrollment_status", new[] { "ACTIVE", "SUSPENDED", "DROPPED", "PENDING" })
+            .HasPostgresEnum("enrollment_status", new[] { "PENDING", "ACTIVE", "SUSPENDED", "DROPPED" })
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in", "like", "ilike", "is", "match", "imatch", "isdistinct" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
@@ -101,6 +101,13 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
                 .HasColumnName("name");
+            entity.Property(e => e.AgeGroup)
+                .HasMaxLength(50)
+                .HasColumnName("age_group");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Capacity)
+                .HasDefaultValue(20)
+                .HasColumnName("capacity");
             entity.Property(e => e.TeacherId).HasColumnName("teacher_id");
             entity.Property(e => e.TuitionFee)
                 .HasPrecision(12, 2)

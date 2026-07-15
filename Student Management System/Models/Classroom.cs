@@ -11,6 +11,12 @@ public partial class Classroom
 
     public decimal TuitionFee { get; set; }
 
+    public string? AgeGroup { get; set; }
+
+    public string? Description { get; set; }
+
+    public int Capacity { get; set; }
+
     public long? TeacherId { get; set; }
 
     public bool IsDeleted { get; set; }

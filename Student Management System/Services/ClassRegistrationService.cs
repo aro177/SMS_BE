@@ -1,3 +1,4 @@
+using Student_Management_System.Common.Pagination;
 using Student_Management_System.Dtos.ClassRegistrations;
 using Student_Management_System.Models;
 using Student_Management_System.Models.Enum;
@@ -23,6 +24,11 @@ public class ClassRegistrationService : IClassRegistrationService
         _enrollments = enrollments;
         _parents = parents;
         _students = students;
+    }
+
+    public Task<PagedResult<ClassRegistrationItemResponse>> GetPagedAsync(EnrollmentStatus? status, PaginationQuery pagination)
+    {
+        return _enrollments.GetPagedRegistrationsAsync(status, pagination);
     }
 
     public async Task<ClassRegistrationResponse?> RegisterAsync(ClassRegistrationRequest request)
@@ -53,22 +59,54 @@ public class ClassRegistrationService : IClassRegistrationService
             await _students.SaveChangesAsync();
         }
 
-        var exists = await _enrollments.ExistsAsync(student.Id, request.ClassId);
-        if (!exists)
+        var enrollment = await _enrollments.GetByStudentAndClassroomAsync(student.Id, request.ClassId);
+        if (enrollment is null)
         {
-            _enrollments.Add(new Enrollment
+            enrollment = new Enrollment
             {
                 StudentId = student.Id,
                 ClassroomId = request.ClassId,
                 EnrollDate = DateOnly.FromDateTime(DateTime.UtcNow),
-                Status = EnrollmentStatus.ACTIVE,
+                Status = EnrollmentStatus.PENDING,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
-            });
-            await _students.SaveChangesAsync();
+            };
+            _enrollments.Add(enrollment);
+        }
+        else
+        {
+            enrollment.Status = EnrollmentStatus.PENDING;
+            enrollment.UpdatedAt = DateTime.UtcNow;
         }
 
-        return new ClassRegistrationResponse(student.Fullname, classroom.Name, EnrollmentStatus.ACTIVE.ToString());
+        await _enrollments.SaveChangesAsync();
+
+        return new ClassRegistrationResponse(student.Fullname, classroom.Name, EnrollmentStatus.PENDING.ToString());
+    }
+
+    public async Task<bool> ApproveAsync(long id)
+    {
+        return await UpdateStatusAsync(id, EnrollmentStatus.ACTIVE);
+    }
+
+    public async Task<bool> RejectAsync(long id)
+    {
+        return await UpdateStatusAsync(id, EnrollmentStatus.DROPPED);
+    }
+
+    private async Task<bool> UpdateStatusAsync(long id, EnrollmentStatus status)
+    {
+        var enrollment = await _enrollments.GetActiveByIdAsync(id);
+        if (enrollment is null)
+        {
+            return false;
+        }
+
+        enrollment.Status = status;
+        enrollment.UpdatedAt = DateTime.UtcNow;
+
+        await _enrollments.SaveChangesAsync();
+        return true;
     }
 
     private async Task<Parent> FindOrCreateParent(string parentName, string parentPhone)
