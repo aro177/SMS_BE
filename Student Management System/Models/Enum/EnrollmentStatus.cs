@@ -4,6 +4,7 @@
     {
         ACTIVE, 
         SUSPENDED, 
-        DROPPED
+        DROPPED,
+        PENDING
     }
 }
