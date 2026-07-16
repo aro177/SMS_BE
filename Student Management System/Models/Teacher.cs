@@ -11,6 +11,8 @@ public partial class Teacher
 
     public string? Phone { get; set; }
 
+    public Guid? AuthUserId { get; set; }
+
     public bool IsDeleted { get; set; }
 
     public DateTime CreatedAt { get; set; }

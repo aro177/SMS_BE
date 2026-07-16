@@ -8,6 +8,7 @@ public interface ITeacherRepository
 {
     Task<PagedResult<TeacherResponse>> GetPagedAsync(PaginationQuery pagination);
     Task<Teacher?> GetActiveByIdAsync(long id);
+    Task<Teacher?> GetActiveByAuthUserIdAsync(Guid authUserId);
     void Add(Teacher teacher);
     Task SaveChangesAsync();
 }

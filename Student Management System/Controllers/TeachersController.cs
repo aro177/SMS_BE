@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Student_Management_System.Common.Pagination;
 using Student_Management_System.Dtos.Teachers;
@@ -14,6 +15,14 @@ public class TeachersController : ControllerBase
     public TeachersController(ITeacherService teachers)
     {
         _teachers = teachers;
+    }
+
+    [Authorize(Roles = "TEACHER")]
+    [HttpGet("me")]
+    public async Task<IActionResult> GetCurrentTeacher()
+    {
+        var teacher = await _teachers.GetCurrentTeacherAsync();
+        return teacher is null ? NotFound("Teacher profile is not linked to this account.") : Ok(teacher);
     }
 
     [HttpGet]

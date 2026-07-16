@@ -253,7 +253,10 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("teachers");
 
+            entity.HasIndex(e => e.AuthUserId, "uq_teachers_auth_user_id").IsUnique();
+
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.AuthUserId).HasColumnName("auth_user_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");

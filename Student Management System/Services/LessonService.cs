@@ -1,4 +1,5 @@
 using Student_Management_System.Common.Pagination;
+using Student_Management_System.Configs.HttpContext;
 using Student_Management_System.Dtos.Lessons;
 using Student_Management_System.Models;
 using Student_Management_System.Repositories.Interfaces;
@@ -9,17 +10,47 @@ namespace Student_Management_System.Services;
 public class LessonService : ILessonService
 {
     private readonly IClassroomRepository _classrooms;
+    private readonly ICurrentUserService _currentUser;
     private readonly ILessonRepository _lessons;
+    private readonly ITeacherRepository _teachers;
 
-    public LessonService(IClassroomRepository classrooms, ILessonRepository lessons)
+    public LessonService(
+        IClassroomRepository classrooms,
+        ICurrentUserService currentUser,
+        ILessonRepository lessons,
+        ITeacherRepository teachers)
     {
         _classrooms = classrooms;
+        _currentUser = currentUser;
         _lessons = lessons;
+        _teachers = teachers;
     }
 
     public Task<PagedResult<LessonResponse>> GetPagedAsync(LessonFilter filter, PaginationQuery pagination)
     {
         return _lessons.GetPagedAsync(filter, pagination);
+    }
+
+    public async Task<IReadOnlyList<LessonResponse>?> GetTodayForCurrentTeacherAsync(DateOnly? date = null)
+    {
+        var userId = _currentUser.User?.UserId;
+        if (userId is null)
+        {
+            return null;
+        }
+
+        var teacher = await _teachers.GetActiveByAuthUserIdAsync(userId.Value);
+        if (teacher is null)
+        {
+            return null;
+        }
+
+        var targetDate = date ?? DateOnly.FromDateTime(DateTime.Now);
+        var start = targetDate.ToDateTime(TimeOnly.MinValue);
+        var end = targetDate.ToDateTime(TimeOnly.MaxValue);
+        var lessons = await _lessons.GetPagedAsync(new LessonFilter(start, end, teacher.Id, null), new PaginationQuery { Page = 1, PageSize = 100 });
+
+        return lessons.Items;
     }
 
     public async Task<LessonResponse?> CreateAsync(CreateLessonRequest request)

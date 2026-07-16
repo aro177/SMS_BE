@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Student_Management_System.Common.Pagination;
 using Student_Management_System.Dtos.Lessons;
@@ -14,6 +15,14 @@ public class LessonsController : ControllerBase
     public LessonsController(ILessonService lessons)
     {
         _lessons = lessons;
+    }
+
+    [Authorize(Roles = "TEACHER")]
+    [HttpGet("my/today")]
+    public async Task<IActionResult> GetMyLessonsToday([FromQuery] DateOnly? date)
+    {
+        var lessons = await _lessons.GetTodayForCurrentTeacherAsync(date);
+        return lessons is null ? NotFound("Teacher profile is not linked to this account.") : Ok(lessons);
     }
 
     [HttpGet]

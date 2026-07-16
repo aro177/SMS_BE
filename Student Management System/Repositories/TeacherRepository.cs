@@ -25,7 +25,8 @@ public class TeacherRepository : ITeacherRepository
                 teacher.Id,
                 teacher.Fullname,
                 teacher.Phone,
-                teacher.Classrooms.Count(classroom => !classroom.IsDeleted)));
+                teacher.Classrooms.Count(classroom => !classroom.IsDeleted),
+                teacher.AuthUserId));
 
         var total = await query.CountAsync();
         var items = await query.Skip(pagination.Skip).Take(pagination.PageSize).ToListAsync();
@@ -36,6 +37,11 @@ public class TeacherRepository : ITeacherRepository
     public Task<Teacher?> GetActiveByIdAsync(long id)
     {
         return _context.Teachers.FirstOrDefaultAsync(item => item.Id == id && !item.IsDeleted);
+    }
+
+    public Task<Teacher?> GetActiveByAuthUserIdAsync(Guid authUserId)
+    {
+        return _context.Teachers.FirstOrDefaultAsync(item => item.AuthUserId == authUserId && !item.IsDeleted);
     }
 
     public void Add(Teacher teacher)
