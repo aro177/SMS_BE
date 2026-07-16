@@ -1,7 +1,9 @@
 using Student_Management_System.Common.Pagination;
 using Student_Management_System.Configs.HttpContext;
 using Student_Management_System.Dtos.Teachers;
+using Student_Management_System.Integrations.supabase;
 using Student_Management_System.Models;
+using Student_Management_System.Models.Enum;
 using Student_Management_System.Repositories.Interfaces;
 using Student_Management_System.Services.Interfaces;
 
@@ -11,11 +13,13 @@ public class TeacherService : ITeacherService
 {
     private readonly ICurrentUserService _currentUser;
     private readonly ITeacherRepository _teachers;
+    private readonly ISupabaseAuthClient _authClient;
 
-    public TeacherService(ICurrentUserService currentUser, ITeacherRepository teachers)
+    public TeacherService(ICurrentUserService currentUser, ITeacherRepository teachers, ISupabaseAuthClient authClient)
     {
         _currentUser = currentUser;
         _teachers = teachers;
+        _authClient = authClient;
     }
 
     public Task<PagedResult<TeacherResponse>> GetPagedAsync(PaginationQuery pagination)
@@ -44,11 +48,19 @@ public class TeacherService : ITeacherService
 
     public async Task<TeacherResponse> CreateAsync(CreateTeacherRequest request)
     {
+        var accountEmail = _authClient.BuildEmailFromFullName(request.Fullname ?? "");
+
+        Guid authId = await _authClient.CreateAccountAsync(
+            Role.TEACHER,
+            accountEmail,
+            string.IsNullOrWhiteSpace(request.Phone) ? "12345678" : request.Phone.Trim(),
+            string.IsNullOrWhiteSpace(request.Phone) ? "0" : request.Phone.Trim());
+
         var teacher = new Teacher
         {
             Fullname = request.Fullname.Trim(),
             Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
-            AuthUserId = request.AuthUserId,
+            AuthUserId = authId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -56,7 +68,7 @@ public class TeacherService : ITeacherService
         _teachers.Add(teacher);
         await _teachers.SaveChangesAsync();
 
-        return new TeacherResponse(teacher.Id, teacher.Fullname, teacher.Phone, 0, teacher.AuthUserId);
+        return new TeacherResponse(teacher.Id, teacher.Fullname, teacher.Phone, 0, authId);
     }
 
     public async Task<bool> UpdateAsync(long id, UpdateTeacherRequest request)
