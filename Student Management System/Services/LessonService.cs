@@ -1,3 +1,4 @@
+using Student_Management_System.Common.DateTimes;
 using Student_Management_System.Common.Pagination;
 using Student_Management_System.Configs.HttpContext;
 using Student_Management_System.Dtos.Lessons;
@@ -28,7 +29,13 @@ public class LessonService : ILessonService
 
     public Task<PagedResult<LessonResponse>> GetPagedAsync(LessonFilter filter, PaginationQuery pagination)
     {
-        return _lessons.GetPagedAsync(filter, pagination);
+        var normalizedFilter = new LessonFilter(
+            DateTimeUtc.Normalize(filter.From),
+            DateTimeUtc.Normalize(filter.To),
+            filter.TeacherId,
+            filter.ClassroomId);
+
+        return _lessons.GetPagedAsync(normalizedFilter, pagination);
     }
 
     public async Task<IReadOnlyList<LessonResponse>?> GetTodayForCurrentTeacherAsync(DateOnly? date = null)
@@ -45,9 +52,9 @@ public class LessonService : ILessonService
             return null;
         }
 
-        var targetDate = date ?? DateOnly.FromDateTime(DateTime.Now);
-        var start = targetDate.ToDateTime(TimeOnly.MinValue);
-        var end = targetDate.ToDateTime(TimeOnly.MaxValue);
+        var targetDate = date ?? DateTimeUtc.TodayInVietnam();
+        var start = DateTimeUtc.FromVietnamLocal(targetDate, TimeOnly.MinValue);
+        var end = DateTimeUtc.FromVietnamLocal(targetDate, TimeOnly.MaxValue);
         var lessons = await _lessons.GetPagedAsync(new LessonFilter(start, end, teacher.Id, null), new PaginationQuery { Page = 1, PageSize = 100 });
 
         return lessons.Items;
@@ -55,8 +62,10 @@ public class LessonService : ILessonService
 
     public async Task<LessonResponse?> CreateAsync(CreateLessonRequest request)
     {
+        var startTime = DateTimeUtc.Normalize(request.StartTime);
+        var endTime = DateTimeUtc.Normalize(request.EndTime);
         var classroom = await _classrooms.GetActiveByIdAsync(request.ClassroomId);
-        if (classroom is null || request.EndTime <= request.StartTime)
+        if (classroom is null || endTime <= startTime)
         {
             return null;
         }
@@ -65,8 +74,8 @@ public class LessonService : ILessonService
         {
             ClassroomId = request.ClassroomId,
             Title = string.IsNullOrWhiteSpace(request.Title) ? classroom.Name : request.Title.Trim(),
-            StartTime = request.StartTime,
-            EndTime = request.EndTime,
+            StartTime = startTime,
+            EndTime = endTime,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -87,17 +96,19 @@ public class LessonService : ILessonService
 
     public async Task<bool> UpdateAsync(long id, UpdateLessonRequest request)
     {
+        var startTime = DateTimeUtc.Normalize(request.StartTime);
+        var endTime = DateTimeUtc.Normalize(request.EndTime);
         var lesson = await _lessons.GetActiveByIdAsync(id);
         var classroom = await _classrooms.GetActiveByIdAsync(request.ClassroomId);
-        if (lesson is null || classroom is null || request.EndTime <= request.StartTime)
+        if (lesson is null || classroom is null || endTime <= startTime)
         {
             return false;
         }
 
         lesson.ClassroomId = request.ClassroomId;
         lesson.Title = request.Title.Trim();
-        lesson.StartTime = request.StartTime;
-        lesson.EndTime = request.EndTime;
+        lesson.StartTime = startTime;
+        lesson.EndTime = endTime;
         lesson.UpdatedAt = DateTime.UtcNow;
 
         await _lessons.SaveChangesAsync();
