@@ -5,6 +5,8 @@ namespace Student_Management_System.Integrations.supabase
 {
     public interface ISupabaseAuthClient
     {
+        string BuildEmailFromFullName(string fullName);
+
         Task<Guid> CreateAccountAsync(
             Role role,
             string email,

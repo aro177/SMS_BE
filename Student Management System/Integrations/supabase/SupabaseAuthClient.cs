@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using Student_Management_System.Config;
+using Student_Management_System.Common.Text;
 using Student_Management_System.Integrations.supabase.dto;
 using Student_Management_System.Models;
 using Student_Management_System.Models.Enum;
@@ -31,6 +32,11 @@ namespace Student_Management_System.Integrations.supabase
         public Task<bool> CheckOldPasswordAsync(string email, string password)
         {
             throw new NotImplementedException();
+        }
+
+        public string BuildEmailFromFullName(string fullName)
+        {
+            return VietnameseEmailConverter.ToMailAddress(fullName);
         }
 
         public async Task<Guid> CreateAccountAsync(Role role, string email, string password, string phone)

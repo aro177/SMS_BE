@@ -57,16 +57,21 @@ namespace Student_Management_System.Controllers
         [HttpGet("create-account")]
         [AllowAnonymous]
         public async Task<IActionResult> CreateAccount(
-        [FromQuery] string email,
+        [FromQuery] string? email,
+        [FromQuery] string? fullName,
         [FromQuery] Role role)
         {
+            var accountEmail = string.IsNullOrWhiteSpace(email)
+                ? _authClient.BuildEmailFromFullName(fullName ?? "")
+                : email;
+
             await _authClient.CreateAccountAsync(
                 role,
-                email,
+                accountEmail,
                 "12345678",
                 "0123456782");
 
-            return Ok("OK");
+            return Ok(accountEmail);
         }
     }
 }
