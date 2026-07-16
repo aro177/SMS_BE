@@ -28,7 +28,7 @@ public class ClassroomRepository : IClassroomRepository
                 classroom.TuitionFee,
                 classroom.TeacherId,
                 classroom.Teacher == null ? null : classroom.Teacher.Fullname,
-                classroom.Enrollments.Count(enrollment => !enrollment.IsDeleted && enrollment.Status == EnrollmentStatus.ACTIVE),
+                classroom.Enrollments.Count(enrollment => !enrollment.IsDeleted && enrollment.Status.ToString().ToLower() == EnrollmentStatus.ACTIVE.ToString().ToLower()),
                 classroom.AgeGroup,
                 classroom.Description,
                 classroom.Capacity));

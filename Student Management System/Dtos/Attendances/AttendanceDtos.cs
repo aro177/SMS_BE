@@ -6,7 +6,7 @@ public record AttendanceStudentResponse(
     long StudentId,
     string StudentName,
     long? AttendanceId,
-    AttendanceStatus? Status,
+    string? Status,
     string? Note);
 
 public record AttendanceHistoryResponse(
@@ -16,7 +16,7 @@ public record AttendanceHistoryResponse(
     string ClassroomName,
     DateTime StartTime,
     DateTime EndTime,
-    AttendanceStatus Status,
+    string Status,
     string? Note);
 
 public record AttendanceMarkRequest(

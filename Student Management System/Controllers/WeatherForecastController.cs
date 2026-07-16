@@ -55,6 +55,7 @@ namespace Student_Management_System.Controllers
         }
 
         [HttpGet("create-account")]
+        [AllowAnonymous]
         public async Task<IActionResult> CreateAccount(
         [FromQuery] string email,
         [FromQuery] Role role)
@@ -63,7 +64,7 @@ namespace Student_Management_System.Controllers
                 role,
                 email,
                 "12345678",
-                "0123456789");
+                "0123456782");
 
             return Ok("OK");
         }

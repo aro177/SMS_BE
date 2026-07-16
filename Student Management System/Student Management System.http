@@ -11,6 +11,6 @@ Accept: application/json
 Authorization: Bearer {{AccessToken}}
 
 ###
-GET {{Student_Management_System_HostAddress}}/weatherforecast/create-account?email=test@example.com&role=TEACHER
+GET {{Student_Management_System_HostAddress}}/weatherforecast/create-account?email=admin@example.com&role=ADMIN
 Accept: application/json
 Authorization: Bearer {{AccessToken}}

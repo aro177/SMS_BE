@@ -32,7 +32,7 @@ public class StudentRepository : IStudentRepository
                 student.Parent == null ? null : student.Parent.Fullname,
                 student.Parent == null ? null : student.Parent.Phone,
                 student.Enrollments
-                    .Where(enrollment => !enrollment.IsDeleted && enrollment.Status == EnrollmentStatus.ACTIVE)
+                    .Where(enrollment => !enrollment.IsDeleted && enrollment.Status.ToString().ToLower() == EnrollmentStatus.ACTIVE.ToString().ToLower())
                     .Select(enrollment => enrollment.Classroom.Name)
                     .FirstOrDefault()));
 

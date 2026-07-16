@@ -5,7 +5,6 @@
         PENDING,
         ACTIVE, 
         SUSPENDED, 
-        DROPPED,
-        PENDING
+        DROPPED
     }
 }

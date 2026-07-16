@@ -32,7 +32,7 @@ public class AttendanceRepository : IAttendanceRepository
             .AsNoTracking()
             .Where(enrollment =>
                 !enrollment.IsDeleted &&
-                enrollment.Status == EnrollmentStatus.ACTIVE &&
+                enrollment.Status.ToString().ToLower() == EnrollmentStatus.ACTIVE.ToString().ToLower() &&
                 enrollment.ClassroomId == lesson.ClassroomId)
             .OrderBy(enrollment => enrollment.Student.Fullname)
             .Select(enrollment => new AttendanceStudentResponse(
@@ -44,7 +44,7 @@ public class AttendanceRepository : IAttendanceRepository
                     .FirstOrDefault(),
                 enrollment.Student.Attendances
                     .Where(attendance => !attendance.IsDeleted && attendance.LessonId == lessonId)
-                    .Select(attendance => (AttendanceStatus?)attendance.Status)
+                    .Select(attendance => attendance.Status.ToString().ToUpper())
                     .FirstOrDefault(),
                 enrollment.Student.Attendances
                     .Where(attendance => !attendance.IsDeleted && attendance.LessonId == lessonId)
@@ -66,7 +66,7 @@ public class AttendanceRepository : IAttendanceRepository
                 attendance.Lesson.Classroom.Name,
                 attendance.Lesson.StartTime,
                 attendance.Lesson.EndTime,
-                attendance.Status,
+                attendance.Status.ToString().ToUpper(),
                 attendance.Note))
             .ToListAsync();
     }
