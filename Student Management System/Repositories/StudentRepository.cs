@@ -70,7 +70,7 @@ public class StudentRepository : IStudentRepository
                 student.Dob,
                 ParentPhone = student.Parent == null ? "" : student.Parent.Phone,
                 CurrentClass = student.Enrollments
-                    .Where(enrollment => !enrollment.IsDeleted && enrollment.Status == EnrollmentStatus.ACTIVE)
+                    .Where(enrollment => !enrollment.IsDeleted && enrollment.Status.ToString().ToLower() == EnrollmentStatus.ACTIVE.ToString().ToLower())
                     .Select(enrollment => enrollment.Classroom.Name)
                     .FirstOrDefault(),
                 TotalAttendances = student.Attendances.Count(attendance => !attendance.IsDeleted),

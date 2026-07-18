@@ -1,0 +1,6 @@
+services:
+  studentmanagementsystem:
+    image: ${DOCKER_REGISTRY-}studentmanagementsystem
+    build:
+      context: .
+      dockerfile: Student Management System\Dockerfile
