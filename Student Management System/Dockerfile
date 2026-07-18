@@ -18,7 +18,9 @@ COPY ["Student Management System.csproj", "./"]
 RUN dotnet restore "./Student Management System.csproj"
 COPY . .
 WORKDIR "/src/Student Management System"
-RUN dotnet build "./Student Management System.csproj" -c %BUILD_CONFIGURATION% -o /app/build
+RUN dotnet build "Student Management System.csproj" \
+    -c $BUILD_CONFIGURATION \
+    -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
