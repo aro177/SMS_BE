@@ -23,6 +23,6 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore "./Student Management System/Student Management System.csproj"
     - name: Build
-      run: dotnet build --no-restore "./Student Management System.csproj"
+      run: dotnet build --no-restore"./Student Management System/Student Management System.csproj"
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test --no-build --verbosity normal "./Student Management System/Student Management System.csproj"
