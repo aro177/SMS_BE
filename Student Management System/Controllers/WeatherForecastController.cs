@@ -8,7 +8,6 @@ namespace Student_Management_System.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    [Authorize]
     public class WeatherForecastController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -40,7 +39,6 @@ namespace Student_Management_System.Controllers
         }
 
         [HttpGet("student")]
-        [Authorize(Roles = "TEACHER")]
         public IActionResult GetStudents()
         {
             try
