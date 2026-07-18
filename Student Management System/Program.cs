@@ -159,8 +159,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseForwardedHeaders();
 
-app.UseHttpsRedirection();
-
 app.UseCors("Frontend");
 
 app.UseAuthentication();
