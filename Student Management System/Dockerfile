@@ -14,7 +14,7 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:9.0-nanoserver-1809 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["./Student Management System/Student Management System.csproj", "Student Management System/"]
+COPY ["Student Management System.csproj", "./"]
 RUN dotnet restore "./Student Management System/Student Management System.csproj"
 COPY . .
 WORKDIR "/src/Student Management System"
