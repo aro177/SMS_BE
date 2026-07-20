@@ -109,6 +109,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     {
         o.MapEnum<AttendanceStatus>("attendance_status");
         o.MapEnum<EnrollmentStatus>("enrollment_status");
+        o.CommandTimeout(120);
+        o.EnableRetryOnFailure();
     });
 });
 
