@@ -12,6 +12,7 @@ using Student_Management_System.Repositories.Interfaces;
 using Student_Management_System.Services;
 using Student_Management_System.Services.Interfaces;
 using System.Data;
+using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -21,6 +22,22 @@ var builder = WebApplication.CreateBuilder(args);
 LoadDockerSecret("ConnectionStrings:DefaultConnection", "db_connection");
 LoadDockerSecret("SUPABASE_KEY", "supabase_key");
 LoadDockerSecret("Supabase:ApiSecretKey", "supabase_api_secret_key");
+
+var allowedOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? string.Empty)
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .Select(origin => origin.TrimEnd('/'))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
+
+if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
+{
+    allowedOrigins = ["http://localhost:3000", "http://127.0.0.1:3000"];
+}
+
+if (allowedOrigins.Length == 0)
+{
+    throw new InvalidOperationException("Cors:AllowedOrigins must be configured in non-development environments.");
+}
 
 void LoadDockerSecret(string configurationKey, string secretName)
 {
@@ -36,6 +53,13 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.ForwardedHeaders =
         ForwardedHeaders.XForwardedFor |
         ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+
+    var knownProxyValue = builder.Configuration["ReverseProxy:KnownProxy"];
+    if (IPAddress.TryParse(knownProxyValue, out var knownProxy))
+    {
+        options.KnownProxies.Add(knownProxy);
+    }
 });
 
 builder.Services.AddHttpContextAccessor();
@@ -144,7 +168,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("Frontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:3000", "http://127.0.0.1:3000", "https://sms-fe-liart.vercel.app/")
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });

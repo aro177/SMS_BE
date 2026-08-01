@@ -1,4 +1,22 @@
 services:
+  caddy:
+    image: caddy:2.11.4-alpine
+    depends_on:
+      - studentmanagementsystem
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      app_network:
+        ipv4_address: 172.30.0.2
+    restart: unless-stopped
+
   studentmanagementsystem:
     image: student-management-system-api:latest
     build:
@@ -7,6 +25,9 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: 8080
+      ALLOWEDHOSTS: ${API_DOMAIN}
+      CORS__ALLOWEDORIGINS: ${CORS_ALLOWED_ORIGINS}
+      REVERSEPROXY__KNOWNPROXY: 172.30.0.2
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE__URL: ${SUPABASE_URL}
       AUTHENTICATION__VALIDISSUER: ${AUTHENTICATION_VALID_ISSUER}
@@ -15,8 +36,11 @@ services:
       - db_connection
       - supabase_key
       - supabase_api_secret_key
-    ports:
-      - "${API_PORT:-8080}:8080"
+    expose:
+      - "8080"
+    networks:
+      app_network:
+        ipv4_address: 172.30.0.3
     restart: unless-stopped
 
 secrets:
@@ -26,3 +50,14 @@ secrets:
     file: ./secrets/supabase_key.txt
   supabase_api_secret_key:
     file: ./secrets/supabase_api_secret_key.txt
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  app_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
