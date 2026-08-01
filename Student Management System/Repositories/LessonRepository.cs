@@ -51,12 +51,32 @@ public class LessonRepository : ILessonRepository
                 lesson.Classroom.Teacher == null ? null : lesson.Classroom.Teacher.Fullname,
                 lesson.Title,
                 lesson.StartTime,
-                lesson.EndTime));
+                lesson.EndTime,
+                lesson.Code,
+                lesson.TakeAttendanceStatus));
 
         var total = await projected.CountAsync();
         var items = await projected.Skip(pagination.Skip).Take(pagination.PageSize).ToListAsync();
 
         return new PagedResult<LessonResponse>(items, pagination.Page, pagination.PageSize, total);
+    }
+
+    public async Task<IReadOnlyList<LessonAttendanceResponse>> GetAttendancesAsync(long lessonId)
+    {
+        return await _context.Attendances
+            .AsNoTracking()
+            .Where(attendance => !attendance.IsDeleted && attendance.LessonId == lessonId)
+            .OrderBy(attendance => attendance.Student.Fullname)
+            .Select(attendance => new LessonAttendanceResponse(
+                attendance.Id,
+                attendance.LessonId,
+                attendance.StudentId,
+                attendance.Student.Fullname,
+                attendance.Status.ToString(),
+                attendance.Note,
+                attendance.CreatedAt,
+                attendance.UpdatedAt))
+            .ToListAsync();
     }
 
     public Task<Lesson?> GetActiveByIdAsync(long id)

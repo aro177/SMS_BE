@@ -53,7 +53,7 @@ public class StudentService : IStudentService
             student.ParentId,
             parent.Fullname,
             parent.Phone,
-            null);
+            new List<string>());
     }
 
     private async Task<Parent> FindOrCreateParent(string parentName, string parentPhone)

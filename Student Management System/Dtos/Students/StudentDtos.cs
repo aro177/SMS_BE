@@ -9,12 +9,14 @@ public record StudentResponse(
     long? ParentId,
     string? ParentName,
     string? ParentPhone,
-    string? CurrentClass);
+    List<string> CurrentClass);
 
 public record ChildSearchResponse(
     long StudentId,
     string ChildName,
     string DateOfBirth,
+    decimal? Height,
+    decimal? Weight,
     string ParentPhone,
     string CurrentClass,
     string AttendanceRate,

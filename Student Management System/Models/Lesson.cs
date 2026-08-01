@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Student_Management_System.Models.Enum;
 
 namespace Student_Management_System.Models;
 
@@ -16,6 +17,12 @@ public partial class Lesson
     public DateTime EndTime { get; set; }
 
     public bool IsDeleted { get; set; }
+
+    public bool TakeAttendanceStatus { get; set; }
+
+    public RepeatStatus RepeatStatus { get; set; }
+
+    public string? Code { get; set; }
 
     public DateTime CreatedAt { get; set; }
 

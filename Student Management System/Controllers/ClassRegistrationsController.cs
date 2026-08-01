@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Student_Management_System.Common.Pagination;
 using Student_Management_System.Dtos.ClassRegistrations;
-using Student_Management_System.Models.Enum;
 using Student_Management_System.Services.Interfaces;
 
 namespace Student_Management_System.Controllers;
@@ -18,11 +17,9 @@ public class ClassRegistrationsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetRegistrations(
-        [FromQuery] EnrollmentStatus? status,
-        [FromQuery] PaginationQuery pagination)
+    public async Task<IActionResult> GetRegistrations([FromQuery] PaginationQuery pagination)
     {
-        return Ok(await _registrations.GetPagedAsync(status, pagination));
+        return Ok(await _registrations.GetPagedAsync(pagination));
     }
 
     [HttpPost]

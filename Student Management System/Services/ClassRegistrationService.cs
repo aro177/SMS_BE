@@ -26,9 +26,9 @@ public class ClassRegistrationService : IClassRegistrationService
         _students = students;
     }
 
-    public Task<PagedResult<ClassRegistrationItemResponse>> GetPagedAsync(EnrollmentStatus? status, PaginationQuery pagination)
+    public Task<PagedResult<ClassRegistrationItemResponse>> GetPagedAsync(PaginationQuery pagination)
     {
-        return _enrollments.GetPagedRegistrationsAsync(status, pagination);
+        return _enrollments.GetPagedRegistrationsAsync(pagination);
     }
 
     public async Task<ClassRegistrationResponse?> RegisterAsync(ClassRegistrationRequest request)

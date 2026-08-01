@@ -14,6 +14,7 @@ public partial class Teacher
     public Guid? AuthUserId { get; set; }
 
     public bool IsDeleted { get; set; }
+    public string? Code { get; set; }
 
     public DateTime CreatedAt { get; set; }
 

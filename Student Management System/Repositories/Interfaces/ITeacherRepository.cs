@@ -11,4 +11,5 @@ public interface ITeacherRepository
     Task<Teacher?> GetActiveByAuthUserIdAsync(Guid authUserId);
     void Add(Teacher teacher);
     Task SaveChangesAsync();
+    Task<List<string?>> GetExistingCodeAsync(string prefix);
 }

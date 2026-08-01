@@ -18,6 +18,19 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
+LoadDockerSecret("ConnectionStrings:DefaultConnection", "db_connection");
+LoadDockerSecret("SUPABASE_KEY", "supabase_key");
+LoadDockerSecret("Supabase:ApiSecretKey", "supabase_api_secret_key");
+
+void LoadDockerSecret(string configurationKey, string secretName)
+{
+    var secretPath = Path.Combine("/run/secrets", secretName);
+    if (File.Exists(secretPath))
+    {
+        builder.Configuration[configurationKey] = File.ReadAllText(secretPath).Trim();
+    }
+}
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders =
@@ -109,6 +122,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     {
         o.MapEnum<AttendanceStatus>("attendance_status");
         o.MapEnum<EnrollmentStatus>("enrollment_status");
+        o.MapEnum<RepeatStatus>("repeat_status");
         o.CommandTimeout(120);
         o.EnableRetryOnFailure();
     });

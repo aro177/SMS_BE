@@ -45,6 +45,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("auth", "oauth_response_type", new[] { "code" })
             .HasPostgresEnum("auth", "one_time_token_type", new[] { "confirmation_token", "reauthentication_token", "recovery_token", "email_change_token_new", "email_change_token_current", "phone_change_token" })
             .HasPostgresEnum("enrollment_status", new[] { "PENDING", "ACTIVE", "SUSPENDED", "DROPPED" })
+            .HasPostgresEnum("repeat_status", new[] { "FIXED", "TEMPORARY" })
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in", "like", "ilike", "is", "match", "imatch", "isdistinct" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
@@ -175,9 +176,18 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValue(false)
                 .HasColumnName("is_deleted");
             entity.Property(e => e.StartTime).HasColumnName("start_time");
+            entity.Property(e => e.RepeatStatus)
+                .HasDefaultValue(Models.Enum.RepeatStatus.TEMPORARY)
+                .HasColumnName("repeat_status");
+            entity.Property(e => e.TakeAttendanceStatus)
+                .HasDefaultValue(false)
+                .HasColumnName("take_attendance_status");
             entity.Property(e => e.Title)
                 .HasMaxLength(255)
                 .HasColumnName("title");
+            entity.Property(e => e.Code)
+                .HasMaxLength(255)
+                .HasColumnName("code");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
@@ -269,6 +279,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Phone)
                 .HasMaxLength(20)
                 .HasColumnName("phone");
+            entity.Property(e => e.Code)
+                .HasMaxLength(255)
+                .HasColumnName("code");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");

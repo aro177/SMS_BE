@@ -37,6 +37,20 @@ public class LessonsController : ControllerBase
         return Ok(await _lessons.GetPagedAsync(filter, pagination));
     }
 
+    [HttpGet("{lessonId:long}/attendances")]
+    public async Task<IActionResult> GetAttendances(long lessonId)
+    {
+        var attendances = await _lessons.GetAttendancesAsync(lessonId);
+        return attendances is null ? NotFound("Lesson not found.") : Ok(attendances);
+    }
+
+    [HttpPatch("{lessonId:long}/take-attendance-status")]
+    public async Task<IActionResult> ToggleTakeAttendanceStatus(long lessonId)
+    {
+        var result = await _lessons.ToggleTakeAttendanceStatusAsync(lessonId);
+        return result is null ? NotFound("Lesson not found.") : Ok(result);
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateLesson(CreateLessonRequest request)
     {

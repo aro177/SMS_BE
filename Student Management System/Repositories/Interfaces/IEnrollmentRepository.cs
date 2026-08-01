@@ -10,7 +10,7 @@ public interface IEnrollmentRepository
     Task<bool> ExistsAsync(long studentId, long classroomId);
     Task<Enrollment?> GetByStudentAndClassroomAsync(long studentId, long classroomId);
     Task<Enrollment?> GetActiveByIdAsync(long id);
-    Task<PagedResult<ClassRegistrationItemResponse>> GetPagedRegistrationsAsync(EnrollmentStatus? status, PaginationQuery pagination);
+    Task<PagedResult<ClassRegistrationItemResponse>> GetPagedRegistrationsAsync(PaginationQuery pagination);
     void Add(Enrollment enrollment);
     Task SaveChangesAsync();
 }
