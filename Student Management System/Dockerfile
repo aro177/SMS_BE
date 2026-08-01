@@ -1,31 +1,27 @@
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-WORKDIR /app
-EXPOSE 8080
+# syntax=docker/dockerfile:1
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
-
 WORKDIR /src
 
+COPY ["Student Management System/Student Management System.csproj", "Student Management System/"]
+RUN dotnet restore "Student Management System/Student Management System.csproj"
+
 COPY . .
-
-RUN dotnet restore "Student Management System.csproj"
-
-RUN dotnet build "Student Management System.csproj" \
-    -c $BUILD_CONFIGURATION \
-    -o /app/build
-
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-
+WORKDIR "/src/Student Management System"
 RUN dotnet publish "Student Management System.csproj" \
-    -c $BUILD_CONFIGURATION \
-    -o /app/publish \
+    --configuration "$BUILD_CONFIGURATION" \
+    --no-restore \
+    --output /app/publish \
     /p:UseAppHost=false
 
-FROM base AS final
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 
-COPY --from=publish /app/publish .
+ENV ASPNETCORE_HTTP_PORTS=8080
+EXPOSE 8080
 
+COPY --from=build /app/publish .
+
+USER $APP_UID
 ENTRYPOINT ["dotnet", "Student Management System.dll"]

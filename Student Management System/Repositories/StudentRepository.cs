@@ -34,7 +34,8 @@ public class StudentRepository : IStudentRepository
                 student.Enrollments
                     .Where(enrollment => !enrollment.IsDeleted && enrollment.Status.ToString().ToLower() == EnrollmentStatus.ACTIVE.ToString().ToLower())
                     .Select(enrollment => enrollment.Classroom.Name)
-                    .FirstOrDefault()));
+                    .Distinct()
+                    .ToList()));
 
         var total = await query.CountAsync();
         var items = await query.Skip(pagination.Skip).Take(pagination.PageSize).ToListAsync();
@@ -68,13 +69,15 @@ public class StudentRepository : IStudentRepository
                 student.Id,
                 student.Fullname,
                 student.Dob,
+                student.Height,
+                student.Weight,
                 ParentPhone = student.Parent == null ? "" : student.Parent.Phone,
                 CurrentClass = student.Enrollments
-                    .Where(enrollment => !enrollment.IsDeleted && enrollment.Status.ToString().ToLower() == EnrollmentStatus.ACTIVE.ToString().ToLower())
+                    .Where(enrollment => !enrollment.IsDeleted && enrollment.Status == EnrollmentStatus.ACTIVE)
                     .Select(enrollment => enrollment.Classroom.Name)
                     .FirstOrDefault(),
                 TotalAttendances = student.Attendances.Count(attendance => !attendance.IsDeleted),
-                PresentAttendances = student.Attendances.Count(attendance => !attendance.IsDeleted && attendance.Status.ToString().ToLower() == AttendanceStatus.PRESENT.ToString().ToLower()),
+                PresentAttendances = student.Attendances.Count(attendance => !attendance.IsDeleted && attendance.Status == AttendanceStatus.PRESENT),
                 LatestNote = student.Attendances
                     .Where(attendance => !attendance.IsDeleted && attendance.Note != null)
                     .OrderByDescending(attendance => attendance.CreatedAt)
@@ -88,6 +91,8 @@ public class StudentRepository : IStudentRepository
                 student.Id,
                 student.Fullname,
                 student.Dob == null ? "" : student.Dob.Value.ToString("yyyy-MM-dd"),
+                student.Height,
+                student.Weight,
                 student.ParentPhone,
                 student.CurrentClass ?? "Chưa có lớp",
                 BuildAttendanceRate(student.TotalAttendances, student.PresentAttendances),

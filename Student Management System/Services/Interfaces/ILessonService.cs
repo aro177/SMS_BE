@@ -6,7 +6,9 @@ namespace Student_Management_System.Services.Interfaces;
 public interface ILessonService
 {
     Task<PagedResult<LessonResponse>> GetPagedAsync(LessonFilter filter, PaginationQuery pagination);
+    Task<IReadOnlyList<LessonAttendanceResponse>?> GetAttendancesAsync(long lessonId);
     Task<IReadOnlyList<LessonResponse>?> GetTodayForCurrentTeacherAsync(DateOnly? date = null);
+    Task<TakeAttendanceStatusResponse?> ToggleTakeAttendanceStatusAsync(long lessonId);
     Task<LessonResponse?> CreateAsync(CreateLessonRequest request);
     Task<bool> UpdateAsync(long id, UpdateLessonRequest request);
     Task<bool> DeleteAsync(long id);

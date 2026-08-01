@@ -1,6 +1,28 @@
 services:
   studentmanagementsystem:
-    image: ${DOCKER_REGISTRY-}studentmanagementsystem
+    image: student-management-system-api:latest
     build:
       context: .
-      dockerfile: Student Management System\Dockerfile
+      dockerfile: Student Management System/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: 8080
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE__URL: ${SUPABASE_URL}
+      AUTHENTICATION__VALIDISSUER: ${AUTHENTICATION_VALID_ISSUER}
+      AUTHENTICATION__VALIDAUDIENCE: ${AUTHENTICATION_VALID_AUDIENCE:-authenticated}
+    secrets:
+      - db_connection
+      - supabase_key
+      - supabase_api_secret_key
+    ports:
+      - "${API_PORT:-8080}:8080"
+    restart: unless-stopped
+
+secrets:
+  db_connection:
+    file: ./secrets/db_connection.txt
+  supabase_key:
+    file: ./secrets/supabase_key.txt
+  supabase_api_secret_key:
+    file: ./secrets/supabase_api_secret_key.txt

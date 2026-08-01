@@ -37,18 +37,13 @@ public class EnrollmentRepository : IEnrollmentRepository
         return _context.Enrollments.FirstOrDefaultAsync(enrollment => !enrollment.IsDeleted && enrollment.Id == id);
     }
 
-    public async Task<PagedResult<ClassRegistrationItemResponse>> GetPagedRegistrationsAsync(
-        EnrollmentStatus? status,
-        PaginationQuery pagination)
+    public async Task<PagedResult<ClassRegistrationItemResponse>> GetPagedRegistrationsAsync(PaginationQuery pagination)
     {
         var query = _context.Enrollments
             .AsNoTracking()
-            .Where(enrollment => !enrollment.IsDeleted);
-
-        if (status is not null)
-        {
-            query = query.Where(enrollment => enrollment.Status == status);
-        }
+            .Where(enrollment =>
+                !enrollment.IsDeleted &&
+                enrollment.Status == EnrollmentStatus.PENDING);
 
         var projected = query
             .OrderByDescending(enrollment => enrollment.CreatedAt)

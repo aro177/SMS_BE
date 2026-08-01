@@ -53,4 +53,12 @@ public class TeacherRepository : ITeacherRepository
     {
         return _context.SaveChangesAsync();
     }
+
+    public Task<List<string?>> GetExistingCodeAsync(string prefix)
+    {
+        return _context.Teachers
+            .Where(t => t.Code.StartsWith(prefix))
+            .Select(t => t.Code)
+            .ToListAsync();
+    }
 }

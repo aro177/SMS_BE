@@ -5,6 +5,8 @@ using Student_Management_System.Dtos.Lessons;
 using Student_Management_System.Models;
 using Student_Management_System.Repositories.Interfaces;
 using Student_Management_System.Services.Interfaces;
+using System.Globalization;
+using System.Text;
 
 namespace Student_Management_System.Services;
 
@@ -36,6 +38,12 @@ public class LessonService : ILessonService
             filter.ClassroomId);
 
         return _lessons.GetPagedAsync(normalizedFilter, pagination);
+    }
+
+    public async Task<IReadOnlyList<LessonAttendanceResponse>?> GetAttendancesAsync(long lessonId)
+    {
+        var lesson = await _lessons.GetActiveByIdAsync(lessonId);
+        return lesson is null ? null : await _lessons.GetAttendancesAsync(lessonId);
     }
 
     public async Task<IReadOnlyList<LessonResponse>?> GetTodayForCurrentTeacherAsync(DateOnly? date = null)
@@ -70,12 +78,16 @@ public class LessonService : ILessonService
             return null;
         }
 
+        string classroomName = classroom.Name;
+        string code = GenerateCode(classroomName, startTime);
+
         var lesson = new Lesson
         {
             ClassroomId = request.ClassroomId,
             Title = string.IsNullOrWhiteSpace(request.Title) ? classroom.Name : request.Title.Trim(),
             StartTime = startTime,
             EndTime = endTime,
+            Code = code,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -91,7 +103,24 @@ public class LessonService : ILessonService
             classroom.Teacher?.Fullname,
             lesson.Title,
             lesson.StartTime,
-            lesson.EndTime);
+            lesson.EndTime,
+            lesson.Code,
+            lesson.TakeAttendanceStatus);
+    }
+
+    public async Task<TakeAttendanceStatusResponse?> ToggleTakeAttendanceStatusAsync(long lessonId)
+    {
+        var lesson = await _lessons.GetActiveByIdAsync(lessonId);
+        if (lesson is null)
+        {
+            return null;
+        }
+
+        lesson.TakeAttendanceStatus = !lesson.TakeAttendanceStatus;
+        lesson.UpdatedAt = DateTime.UtcNow;
+
+        await _lessons.SaveChangesAsync();
+        return new TakeAttendanceStatusResponse(lesson.Id, lesson.TakeAttendanceStatus);
     }
 
     public async Task<bool> UpdateAsync(long id, UpdateLessonRequest request)
@@ -128,5 +157,86 @@ public class LessonService : ILessonService
 
         await _lessons.SaveChangesAsync();
         return true;
+    }
+
+    private string GenerateCode(string classroomName, DateTime dateTime)
+    {
+        if (string.IsNullOrWhiteSpace(classroomName))
+        {
+            throw new ArgumentException(
+                "Tên lớp không được để trống.",
+                nameof(classroomName)
+            );
+        }
+
+        string normalizedName = RemoveVietnameseDiacritics(
+            classroomName.Trim()
+        );
+
+        char classroomInitial = normalizedName
+            .FirstOrDefault(char.IsLetter);
+
+        if (classroomInitial == default)
+        {
+            throw new ArgumentException(
+                "Tên lớp phải chứa ít nhất một chữ cái.",
+                nameof(classroomName)
+            );
+        }
+
+        string dayCode = GetDayCode(dateTime.DayOfWeek);
+
+        string timeCode = dateTime.ToString(
+            "HHmm",
+            CultureInfo.InvariantCulture
+        );
+
+        return $"{char.ToUpperInvariant(classroomInitial)}_{dayCode}_{timeCode}";
+    }
+
+    private string GetDayCode(DayOfWeek dayOfWeek)
+    {
+        return dayOfWeek switch
+        {
+            DayOfWeek.Monday => "MON",
+            DayOfWeek.Tuesday => "TUE",
+            DayOfWeek.Wednesday => "WED",
+            DayOfWeek.Thursday => "THU",
+            DayOfWeek.Friday => "FRI",
+            DayOfWeek.Saturday => "SAT",
+            DayOfWeek.Sunday => "SUN",
+
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(dayOfWeek),
+                dayOfWeek,
+                "Thứ trong tuần không hợp lệ."
+            )
+        };
+    }
+
+    private string RemoveVietnameseDiacritics(string value)
+    {
+        string normalized = value.Normalize(
+            NormalizationForm.FormD
+        );
+
+        var result = new StringBuilder();
+
+        foreach (char character in normalized)
+        {
+            UnicodeCategory category =
+                CharUnicodeInfo.GetUnicodeCategory(character);
+
+            if (category != UnicodeCategory.NonSpacingMark)
+            {
+                result.Append(character);
+            }
+        }
+
+        return result
+            .ToString()
+            .Normalize(NormalizationForm.FormC)
+            .Replace('đ', 'd')
+            .Replace('Đ', 'D');
     }
 }
