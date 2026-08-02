@@ -1,58 +1,71 @@
-# Triển khai backend bằng Docker Desktop
+# Triển khai backend bằng Docker Desktop và HTTPS
 
-## 1. Cách cấu hình được đóng gói
+## Kiến trúc
 
-Image chạy bằng Linux container, .NET 9, cổng nội bộ `8080` và user không phải root.
+```text
+Internet -> Router TCP 80/443 -> Caddy -> Backend:8080 (Docker network nội bộ)
+```
 
-Các cấu hình không nhạy cảm nằm trong `.env`:
+Caddy tự động lấy và gia hạn chứng chỉ HTTPS. Backend không publish cổng `8080` ra máy host; chỉ Caddy publish `80` và `443`.
 
-- `SUPABASE_URL`
-- `AUTHENTICATION_VALID_ISSUER`
-- `AUTHENTICATION_VALID_AUDIENCE`
-- `API_PORT`
-
-Các giá trị nhạy cảm không được đưa vào environment hoặc image. Docker Compose mount chúng vào `/run/secrets` dưới dạng file read-only:
+Các giá trị nhạy cảm được mount read-only qua Docker secrets:
 
 - `ConnectionStrings:DefaultConnection` -> `secrets/db_connection.txt`
 - `SUPABASE_KEY` -> `secrets/supabase_key.txt`
 - `Supabase:ApiSecretKey` -> `secrets/supabase_api_secret_key.txt`
 
-Backend vẫn đọc User Secrets như bình thường khi chạy trực tiếp bằng `dotnet run`. Việc đọc `/run/secrets` chỉ được kích hoạt khi các file tương ứng tồn tại.
+Không đưa các giá trị này vào `.env`, Dockerfile, build arguments hoặc Git.
 
-## 2. Chuẩn bị máy triển khai
+## 1. Chuẩn bị
 
-1. Cài Git.
-2. Cài Docker Desktop và chọn Linux containers.
-3. Mở Docker Desktop, chờ Docker Engine ở trạng thái Running.
-4. Bảo đảm máy có quyền truy cập PostgreSQL/Supabase qua mạng.
+1. Cài Git và Docker Desktop.
+2. Chọn Linux containers và chờ Docker Engine ở trạng thái Running.
+3. Có một domain hoặc subdomain, ví dụ `api.example.com`.
+4. Tạo DNS `A` record trỏ domain tới public IPv4 của router.
+5. Nếu ISP dùng CGNAT, yêu cầu public IPv4 hoặc dùng một giải pháp tunnel/VPN; router port forwarding thông thường sẽ không hoạt động sau CGNAT.
 
-## 3. Lấy source code
+## 2. Lấy source code
 
 Lần đầu:
 
 ```powershell
-git clone <repository-url>
-Set-Location "Student Management System"
+git clone <repository-url> sms-backend
+Set-Location sms-backend
 ```
 
-Các lần cập nhật tiếp theo:
+Các lần cập nhật sau:
 
 ```powershell
 git pull
 ```
 
-Không dùng `git pull` khi máy triển khai có thay đổi source chưa commit. Chỉ nên lưu `.env` và file trong `secrets/` vì chúng đã được Git ignore.
+Các lệnh Docker phải chạy tại thư mục chứa `docker-compose.yml`.
 
-## 4. Tạo cấu hình không nhạy cảm
+## 3. Tạo `.env`
 
 ```powershell
 Copy-Item .env.example .env
 notepad .env
 ```
 
-Điền URL Supabase và JWT issuer thật. Không đặt database password hoặc Supabase service-role key trong `.env`.
+Ví dụ:
 
-## 5. Tạo Docker secrets
+```env
+API_DOMAIN=api.example.com
+CORS_ALLOWED_ORIGINS=https://app.example.com
+SUPABASE_URL=https://your-project.supabase.co
+AUTHENTICATION_VALID_ISSUER=https://your-project.supabase.co/auth/v1
+AUTHENTICATION_VALID_AUDIENCE=authenticated
+```
+
+Quy tắc:
+
+- `API_DOMAIN` chỉ chứa hostname, không có `https://`, path, port hoặc dấu `/` cuối.
+- `CORS_ALLOWED_ORIGINS` chứa origin đầy đủ của frontend, không có dấu `/` cuối.
+- Nếu có nhiều frontend origin, phân cách bằng dấu phẩy.
+- `AllowedHosts` của ASP.NET Core tự động nhận giá trị từ `API_DOMAIN`.
+
+## 4. Tạo Docker secrets
 
 ```powershell
 New-Item -ItemType Directory -Path secrets -Force
@@ -61,50 +74,60 @@ notepad secrets\supabase_key.txt
 notepad secrets\supabase_api_secret_key.txt
 ```
 
-Mỗi file chỉ chứa đúng một giá trị, không có dấu nháy:
+Mỗi file chỉ chứa đúng một giá trị, không có dấu nháy. Các file này đã được Git ignore và bị loại khỏi Docker build context.
 
-- `db_connection.txt`: toàn bộ PostgreSQL connection string.
-- `supabase_key.txt`: key dùng để khởi tạo Supabase SDK; ưu tiên key có quyền tối thiểu đủ dùng.
-- `supabase_api_secret_key.txt`: server-side/service-role key cho Supabase Admin Auth.
-
-Giới hạn quyền đọc các file cho tài khoản đang triển khai. Trên máy dùng chung, không cấp quyền đọc thư mục repository cho người dùng khác. Tuyệt đối không commit hai file này.
-
-Có thể kiểm tra chúng đang được ignore mà không in nội dung:
+Kiểm tra trạng thái ignore mà không in nội dung secret:
 
 ```powershell
 git status --short --ignored secrets .env
 ```
 
-## 6. Cập nhật database
+## 5. Cập nhật database
 
-Chạy lần lượt các script cần thiết trong thư mục `supabase-migrations/` bằng Supabase SQL Editor hoặc công cụ PostgreSQL được quản trị viên phê duyệt. Phải hoàn thành bước này trước khi khởi động phiên bản backend dùng các cột mới.
+Chạy lần lượt các script cần thiết trong `supabase-migrations/` bằng Supabase SQL Editor hoặc công cụ PostgreSQL được quản trị viên cho phép.
+
+## 6. Cấu hình router và firewall
+
+Đặt DHCP reservation/static LAN IP cho máy chạy Docker Desktop. Trên router, forward:
+
+- TCP `80` -> LAN IP máy Docker, port `80`.
+- TCP `443` -> LAN IP máy Docker, port `443`.
+
+Không forward port `8080`.
+
+Windows Firewall chỉ cần cho phép inbound TCP `80` và `443`. Backend `8080` không được mở ra host hoặc Internet.
 
 ## 7. Build và chạy
 
-Có thể build và chạy trực tiếp bằng cấu hình production:
-
 ```powershell
-docker compose -f docker-compose.yml build
-docker compose -f docker-compose.yml up -d
+docker compose -f docker-compose.yml config
+docker compose -f docker-compose.yml up -d --build
 ```
 
-`docker-compose.override.yml` trong repository được giữ ở trạng thái không thay đổi cấu hình production, vì vậy `docker compose up -d --build` cũng cho kết quả tương đương.
-
-Kiểm tra trạng thái và log:
+Kiểm tra:
 
 ```powershell
 docker compose -f docker-compose.yml ps
+docker compose -f docker-compose.yml logs --tail 100 caddy
 docker compose -f docker-compose.yml logs --tail 100 studentmanagementsystem
 ```
 
-API mặc định có tại `http://localhost:8080`. Có thể đổi cổng host bằng `API_PORT` trong `.env`.
+API được truy cập tại:
 
-## 8. Cập nhật phiên bản sau này
+```text
+https://api.example.com
+```
+
+Chứng chỉ chỉ được cấp khi domain trỏ đúng public IP và Caddy nhận được kết nối từ Internet trên port `80` hoặc `443`.
+
+## 8. Cập nhật phiên bản
 
 ```powershell
 git pull
 docker compose -f docker-compose.yml up -d --build
 ```
+
+Volume `caddy_data` lưu certificate và khóa TLS nên không xóa volume này khi cập nhật.
 
 ## 9. Dừng hoặc khởi động lại
 
@@ -113,13 +136,14 @@ docker compose -f docker-compose.yml restart
 docker compose -f docker-compose.yml down
 ```
 
-`docker compose down` xóa container và network của ứng dụng nhưng không xóa dữ liệu PostgreSQL/Supabase bên ngoài.
+Không dùng `docker compose down -v` trừ khi chủ động muốn xóa dữ liệu certificate của Caddy.
 
 ## Lưu ý bảo mật
 
-- Không `COPY` `secrets.json`, `.env` hoặc thư mục `secrets/` vào image.
-- Không truyền secret bằng `ARG` trong Dockerfile vì nó có thể tồn tại trong build history/cache.
-- Không ghi secret ra log hoặc chụp màn hình Docker Desktop.
-- Chỉ dùng Supabase service-role key ở backend; không gửi nó xuống frontend.
-- Giới hạn firewall/database để chỉ nhận kết nối từ các máy cần thiết.
-- Rotate key/password ngay nếu một secret từng được commit hoặc chia sẻ ngoài ý muốn.
+- Không public trực tiếp port backend `8080`.
+- Không commit `.env` hoặc file trong `secrets/`.
+- Chỉ dùng Supabase service-role key ở backend.
+- CORS không thay thế authentication/authorization.
+- Trusted proxy được giới hạn ở IP cố định của Caddy (`172.30.0.2`) và chỉ xử lý một proxy hop.
+- Cần hoàn thiện `[Authorize]` cho các endpoint nghiệp vụ trước khi public API.
+- Rotate key/password ngay nếu secret từng bị commit hoặc chia sẻ ngoài ý muốn.
