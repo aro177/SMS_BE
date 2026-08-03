@@ -1,47 +1,42 @@
-# Triển khai backend bằng Docker Desktop và HTTPS
+# Triển khai frontend và backend trên cùng một máy
 
 ## Kiến trúc
 
 ```text
-Internet -> Router TCP 80/443 -> Caddy -> Backend:8080 (Docker network nội bộ)
+Internet
+   |
+   | HTTPS :443
+   v
+Caddy
+   |-- /*       -> Next.js frontend:3000
+   `-- /api/*   -> ASP.NET Core backend:8080
 ```
 
-Caddy tự động lấy và gia hạn chứng chỉ HTTPS. Backend không publish cổng `8080` ra máy host; chỉ Caddy publish `80` và `443`.
+Chỉ frontend domain được công bố. Frontend và backend không publish cổng riêng ra máy host. Trình duyệt gọi API bằng URL cùng origin, ví dụ `https://sms.example.com/api/classes`; Caddy chuyển các request `/api/*` vào backend qua Docker network.
 
-Các giá trị nhạy cảm được mount read-only qua Docker secrets:
+## 1. Bố trí hai repository
 
-- `ConnectionStrings:DefaultConnection` -> `secrets/db_connection.txt`
-- `SUPABASE_KEY` -> `secrets/supabase_key.txt`
-- `Supabase:ApiSecretKey` -> `secrets/supabase_api_secret_key.txt`
+Khuyến nghị clone hai repository cạnh nhau:
 
-Không đưa các giá trị này vào `.env`, Dockerfile, build arguments hoặc Git.
+```text
+deployment/
+|-- sms-backend/    # chứa docker-compose.yml và Caddyfile
+`-- sms-frontend/   # chứa Dockerfile của Next.js
+```
 
-## 1. Chuẩn bị
-
-1. Cài Git và Docker Desktop.
-2. Chọn Linux containers và chờ Docker Engine ở trạng thái Running.
-3. Có một domain hoặc subdomain, ví dụ `api.example.com`.
-4. Tạo DNS `A` record trỏ domain tới public IPv4 của router.
-5. Nếu ISP dùng CGNAT, yêu cầu public IPv4 hoặc dùng một giải pháp tunnel/VPN; router port forwarding thông thường sẽ không hoạt động sau CGNAT.
-
-## 2. Lấy source code
-
-Lần đầu:
+Ví dụ:
 
 ```powershell
-git clone <repository-url> sms-backend
+New-Item -ItemType Directory deployment -Force
+Set-Location deployment
+git clone <backend-repository-url> sms-backend
+git clone <frontend-repository-url> sms-frontend
 Set-Location sms-backend
 ```
 
-Các lần cập nhật sau:
+Mọi lệnh `docker compose` được chạy trong `sms-backend`.
 
-```powershell
-git pull
-```
-
-Các lệnh Docker phải chạy tại thư mục chứa `docker-compose.yml`.
-
-## 3. Tạo `.env`
+## 2. Cấu hình `.env`
 
 ```powershell
 Copy-Item .env.example .env
@@ -51,21 +46,24 @@ notepad .env
 Ví dụ:
 
 ```env
-API_DOMAIN=api.example.com
-CORS_ALLOWED_ORIGINS=https://app.example.com
+FRONTEND_BUILD_CONTEXT=../sms-frontend
+PUBLIC_DOMAIN=sms.example.ddns.net
 SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_AUTH_COOKIE_NAME=
 AUTHENTICATION_VALID_ISSUER=https://your-project.supabase.co/auth/v1
 AUTHENTICATION_VALID_AUDIENCE=authenticated
 ```
 
-Quy tắc:
+`PUBLIC_DOMAIN` chỉ chứa hostname, không có `https://`, path, port hoặc dấu `/` cuối. `SUPABASE_ANON_KEY` được nhúng vào frontend và theo thiết kế là public; tuyệt đối không dùng service-role key tại đây.
 
-- `API_DOMAIN` chỉ chứa hostname, không có `https://`, path, port hoặc dấu `/` cuối.
-- `CORS_ALLOWED_ORIGINS` chứa origin đầy đủ của frontend, không có dấu `/` cuối.
-- Nếu có nhiều frontend origin, phân cách bằng dấu phẩy.
-- `AllowedHosts` của ASP.NET Core tự động nhận giá trị từ `API_DOMAIN`.
+Nếu hai repository không nằm cạnh nhau, đặt `FRONTEND_BUILD_CONTEXT` thành đường dẫn tuyệt đối tới frontend, ví dụ trên Windows:
 
-## 4. Tạo Docker secrets
+```env
+FRONTEND_BUILD_CONTEXT=D:/Java in ur area/SMS_FE
+```
+
+## 3. Docker secrets của backend
 
 ```powershell
 New-Item -ItemType Directory -Path secrets -Force
@@ -74,30 +72,31 @@ notepad secrets\supabase_key.txt
 notepad secrets\supabase_api_secret_key.txt
 ```
 
-Mỗi file chỉ chứa đúng một giá trị, không có dấu nháy. Các file này đã được Git ignore và bị loại khỏi Docker build context.
+Mỗi file chỉ chứa đúng một giá trị. Các file này được Git ignore và không được đưa vào Docker image.
 
-Kiểm tra trạng thái ignore mà không in nội dung secret:
+## 4. Supabase Auth
 
-```powershell
-git status --short --ignored secrets .env
+Trong Supabase Dashboard, thêm frontend URL vào Site URL và Redirect URLs, ví dụ:
+
+```text
+https://sms.example.ddns.net
+https://sms.example.ddns.net/**
 ```
 
-## 5. Cập nhật database
+Không thêm URL nội bộ như `http://frontend:3000` hoặc `http://studentmanagementsystem:8080`.
 
-Chạy lần lượt các script cần thiết trong `supabase-migrations/` bằng Supabase SQL Editor hoặc công cụ PostgreSQL được quản trị viên cho phép.
+## 5. DNS, modem và firewall
 
-## 6. Cấu hình router và firewall
+Trỏ hostname/domain tới public IPv4 của modem. Đặt IP LAN cố định cho máy chạy Docker Desktop.
 
-Đặt DHCP reservation/static LAN IP cho máy chạy Docker Desktop. Trên router, forward:
+Forward trên modem:
 
-- TCP `80` -> LAN IP máy Docker, port `80`.
-- TCP `443` -> LAN IP máy Docker, port `443`.
+- TCP `80` -> máy Docker port `80`.
+- TCP `443` -> máy Docker port `443`.
 
-Không forward port `8080`.
+Chỉ mở inbound TCP `80/443` trong Windows Firewall. Không forward hoặc mở `3000`, `8080`.
 
-Windows Firewall chỉ cần cho phép inbound TCP `80` và `443`. Backend `8080` không được mở ra host hoặc Internet.
-
-## 7. Build và chạy
+## 6. Build và chạy
 
 ```powershell
 docker compose -f docker-compose.yml config
@@ -109,41 +108,47 @@ Kiểm tra:
 ```powershell
 docker compose -f docker-compose.yml ps
 docker compose -f docker-compose.yml logs --tail 100 caddy
+docker compose -f docker-compose.yml logs --tail 100 frontend
 docker compose -f docker-compose.yml logs --tail 100 studentmanagementsystem
 ```
 
-API được truy cập tại:
+Kết quả đúng:
+
+- Caddy publish `80/443`.
+- Frontend chỉ hiển thị `3000/tcp`, không có host mapping.
+- Backend chỉ hiển thị `8080/tcp`, không có host mapping.
+
+Truy cập:
 
 ```text
-https://api.example.com
+https://sms.example.ddns.net
 ```
 
-Chứng chỉ chỉ được cấp khi domain trỏ đúng public IP và Caddy nhận được kết nối từ Internet trên port `80` hoặc `443`.
-
-## 8. Cập nhật phiên bản
+## 7. Cập nhật cả hai ứng dụng
 
 ```powershell
+Set-Location ../sms-frontend
+git pull
+Set-Location ../sms-backend
 git pull
 docker compose -f docker-compose.yml up -d --build
 ```
 
-Volume `caddy_data` lưu certificate và khóa TLS nên không xóa volume này khi cập nhật.
+Các biến `NEXT_PUBLIC_*` được nhúng trong lúc build Next.js. Khi thay đổi domain, Supabase URL hoặc anon key, phải build lại frontend image.
 
-## 9. Dừng hoặc khởi động lại
+## 8. Luồng request
 
-```powershell
-docker compose -f docker-compose.yml restart
-docker compose -f docker-compose.yml down
-```
+- Trình duyệt gọi `/api/...` tương đối, nên request có cùng origin với frontend.
+- Next.js server-side gọi backend qua `http://studentmanagementsystem:8080` trong Docker network.
+- Caddy là trusted proxy duy nhất tại `172.30.0.2`.
+- Backend chỉ chấp nhận host khớp `PUBLIC_DOMAIN`.
 
-Không dùng `docker compose down -v` trừ khi chủ động muốn xóa dữ liệu certificate của Caddy.
+Việc backend không có port/hostname riêng không làm API trở thành private đối với người dùng Internet: các endpoint `/api/*` vẫn có thể được gọi qua frontend domain. Authentication và authorization vẫn bắt buộc.
 
 ## Lưu ý bảo mật
 
-- Không public trực tiếp port backend `8080`.
-- Không commit `.env` hoặc file trong `secrets/`.
-- Chỉ dùng Supabase service-role key ở backend.
-- CORS không thay thế authentication/authorization.
-- Trusted proxy được giới hạn ở IP cố định của Caddy (`172.30.0.2`) và chỉ xử lý một proxy hop.
-- Cần hoàn thiện `[Authorize]` cho các endpoint nghiệp vụ trước khi public API.
-- Rotate key/password ngay nếu secret từng bị commit hoặc chia sẻ ngoài ý muốn.
+- Không public `3000` hoặc `8080`.
+- Không đưa Supabase service-role key vào frontend hoặc build arguments.
+- Không commit `.env` và thư mục `secrets/`.
+- Không xóa volume `caddy_data` khi cập nhật vì volume này lưu certificate và khóa TLS.
+- CORS cùng origin không thay thế `[Authorize]`.
