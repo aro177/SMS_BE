@@ -1,4 +1,4 @@
-{$API_DOMAIN} {
+{$PUBLIC_DOMAIN} {
     encode zstd gzip
 
     header {
@@ -7,5 +7,9 @@
         -Server
     }
 
-    reverse_proxy studentmanagementsystem:8080
+    route {
+        @backend path /api /api/*
+        reverse_proxy @backend studentmanagementsystem:8080
+        reverse_proxy frontend:3000
+    }
 }
