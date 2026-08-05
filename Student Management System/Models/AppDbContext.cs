@@ -177,7 +177,6 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("is_deleted");
             entity.Property(e => e.StartTime).HasColumnName("start_time");
             entity.Property(e => e.RepeatStatus)
-                .HasDefaultValue(Models.Enum.RepeatStatus.TEMPORARY)
                 .HasColumnName("repeat_status");
             entity.Property(e => e.TakeAttendanceStatus)
                 .HasDefaultValue(false)

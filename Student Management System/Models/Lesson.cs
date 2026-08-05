@@ -20,7 +20,7 @@ public partial class Lesson
 
     public bool TakeAttendanceStatus { get; set; }
 
-    public RepeatStatus RepeatStatus { get; set; }
+    public RepeatStatus RepeatStatus { get; set; } = Models.Enum.RepeatStatus.TEMPORARY;
 
     public string? Code { get; set; }
 
