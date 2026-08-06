@@ -73,7 +73,7 @@ public class LessonService : ILessonService
         var startTime = DateTimeUtc.Normalize(request.StartTime);
         var endTime = DateTimeUtc.Normalize(request.EndTime);
         var classroom = await _classrooms.GetActiveByIdAsync(request.ClassroomId);
-        if (classroom is null || endTime <= startTime)
+        if (classroom is null || endTime <= startTime || !Enum.IsDefined(request.RepeatStatus))
         {
             return null;
         }
@@ -87,6 +87,7 @@ public class LessonService : ILessonService
             Title = string.IsNullOrWhiteSpace(request.Title) ? classroom.Name : request.Title.Trim(),
             StartTime = startTime,
             EndTime = endTime,
+            RepeatStatus = request.RepeatStatus,
             Code = code,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -105,7 +106,8 @@ public class LessonService : ILessonService
             lesson.StartTime,
             lesson.EndTime,
             lesson.Code,
-            lesson.TakeAttendanceStatus);
+            lesson.TakeAttendanceStatus,
+            lesson.RepeatStatus);
     }
 
     public async Task<TakeAttendanceStatusResponse?> ToggleTakeAttendanceStatusAsync(long lessonId)
@@ -129,7 +131,7 @@ public class LessonService : ILessonService
         var endTime = DateTimeUtc.Normalize(request.EndTime);
         var lesson = await _lessons.GetActiveByIdAsync(id);
         var classroom = await _classrooms.GetActiveByIdAsync(request.ClassroomId);
-        if (lesson is null || classroom is null || endTime <= startTime)
+        if (lesson is null || classroom is null || endTime <= startTime || !Enum.IsDefined(request.RepeatStatus))
         {
             return false;
         }
@@ -138,6 +140,7 @@ public class LessonService : ILessonService
         lesson.Title = request.Title.Trim();
         lesson.StartTime = startTime;
         lesson.EndTime = endTime;
+        lesson.RepeatStatus = request.RepeatStatus;
         lesson.UpdatedAt = DateTime.UtcNow;
 
         await _lessons.SaveChangesAsync();
