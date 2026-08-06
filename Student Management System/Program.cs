@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Student_Management_System.Config;
+using Student_Management_System.Configs;
 using Student_Management_System.Configs.HttpContext;
 using Student_Management_System.Integrations.supabase;
+using Student_Management_System.Integrations.turnstile;
 using Student_Management_System.Models;
 using Student_Management_System.Models.Enum;
 using Student_Management_System.Repositories;
@@ -16,12 +19,14 @@ using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 LoadDockerSecret("ConnectionStrings:DefaultConnection", "db_connection");
 LoadDockerSecret("SUPABASE_KEY", "supabase_key");
 LoadDockerSecret("Supabase:ApiSecretKey", "supabase_api_secret_key");
+LoadDockerSecret("Turnstile:SecretKey", "turnstile_secret_key");
 
 var allowedOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? string.Empty)
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -76,6 +81,21 @@ var supabase = new Supabase.Client(url, key, options);
 await supabase.InitializeAsync();
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("StudentSearch", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 10,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
 {
@@ -154,11 +174,18 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.Configure<SupabaseOptions>(
     builder.Configuration.GetSection("Supabase"));
+builder.Services.Configure<TurnstileOptions>(
+    builder.Configuration.GetSection("Turnstile"));
 
 builder.Services.AddTransient<SupabaseAuthHandler>();
 
 builder.Services.AddHttpClient<ISupabaseAuthClient, SupabaseAuthClient>()
     .AddHttpMessageHandler<SupabaseAuthHandler>();
+builder.Services.AddHttpClient<ITurnstileVerificationService, CloudflareTurnstileVerificationService>(client =>
+{
+    client.BaseAddress = new Uri("https://challenges.cloudflare.com/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -185,6 +212,7 @@ builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
 builder.Services.AddScoped<IClassRegistrationService, ClassRegistrationService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IClassroomService, ClassroomService>();
+builder.Services.AddScoped<IDatabaseMaintenanceService, DatabaseMaintenanceService>();
 builder.Services.AddScoped<ILessonService, LessonService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
@@ -198,6 +226,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseForwardedHeaders();
+
+app.UseRateLimiter();
 
 app.UseCors("Frontend");
 

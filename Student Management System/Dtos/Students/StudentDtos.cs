@@ -1,5 +1,10 @@
 namespace Student_Management_System.Dtos.Students;
 
+public record SearchChildrenRequest(
+    string ParentPhone,
+    DateOnly ChildDob,
+    string TurnstileToken);
+
 public record StudentResponse(
     long Id,
     string Fullname,
