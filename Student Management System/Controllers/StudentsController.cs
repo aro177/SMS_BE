@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Student_Management_System.Common.Pagination;
 using Student_Management_System.Dtos.Students;
 using Student_Management_System.Services.Interfaces;
@@ -10,10 +11,14 @@ namespace Student_Management_System.Controllers;
 public class StudentsController : ControllerBase
 {
     private readonly IStudentService _students;
+    private readonly ITurnstileVerificationService _turnstile;
 
-    public StudentsController(IStudentService students)
+    public StudentsController(
+        IStudentService students,
+        ITurnstileVerificationService turnstile)
     {
         _students = students;
+        _turnstile = turnstile;
     }
 
     [HttpGet]
@@ -22,10 +27,23 @@ public class StudentsController : ControllerBase
         return Ok(await _students.GetPagedAsync(pagination));
     }
 
-    [HttpGet("search")]
-    public async Task<IActionResult> SearchChildren([FromQuery] string parentPhone, [FromQuery] DateOnly childDob)
+    [HttpPost("search")]
+    [EnableRateLimiting("StudentSearch")]
+    public async Task<IActionResult> SearchChildren(
+        SearchChildrenRequest request,
+        CancellationToken cancellationToken)
     {
-        return Ok(await _students.SearchChildrenAsync(parentPhone, childDob));
+        var captchaValid = await _turnstile.VerifyStudentSearchAsync(
+            request.TurnstileToken,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            cancellationToken);
+
+        if (!captchaValid)
+        {
+            return BadRequest(new { message = "CAPTCHA verification failed." });
+        }
+
+        return Ok(await _students.SearchChildrenAsync(request.ParentPhone, request.ChildDob));
     }
 
     [HttpPost]

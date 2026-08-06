@@ -28,12 +28,14 @@ services:
         NEXT_PUBLIC_SITE_URL: https://${PUBLIC_DOMAIN}
         NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY}
     environment:
       INTERNAL_API_URL: http://studentmanagementsystem:8080
       TZ: Asia/Ho_Chi_Minh
       NEXT_PUBLIC_SITE_URL: https://${PUBLIC_DOMAIN}
       NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY}
     expose:
       - "3000"
     networks:
@@ -56,10 +58,12 @@ services:
       SUPABASE__URL: ${SUPABASE_URL}
       AUTHENTICATION__VALIDISSUER: ${AUTHENTICATION_VALID_ISSUER}
       AUTHENTICATION__VALIDAUDIENCE: ${AUTHENTICATION_VALID_AUDIENCE:-authenticated}
+      TURNSTILE__EXPECTEDHOSTNAME: ${PUBLIC_DOMAIN}
     secrets:
       - db_connection
       - supabase_key
       - supabase_api_secret_key
+      - turnstile_secret_key
     expose:
       - "8080"
     networks:
@@ -74,6 +78,8 @@ secrets:
     file: ./secrets/supabase_key.txt
   supabase_api_secret_key:
     file: ./secrets/supabase_api_secret_key.txt
+  turnstile_secret_key:
+    file: ./secrets/turnstile_secret_key.txt
 
 volumes:
   caddy_data:
