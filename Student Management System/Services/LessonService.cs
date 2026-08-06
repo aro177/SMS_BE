@@ -136,11 +136,17 @@ public class LessonService : ILessonService
             return false;
         }
 
+        var startTimeChanged = lesson.StartTime != startTime;
+
         lesson.ClassroomId = request.ClassroomId;
         lesson.Title = request.Title.Trim();
         lesson.StartTime = startTime;
         lesson.EndTime = endTime;
         lesson.RepeatStatus = request.RepeatStatus;
+        if (startTimeChanged)
+        {
+            lesson.Code = GenerateCode(classroom.Name, startTime);
+        }
         lesson.UpdatedAt = DateTime.UtcNow;
 
         await _lessons.SaveChangesAsync();
@@ -187,9 +193,11 @@ public class LessonService : ILessonService
             );
         }
 
-        string dayCode = GetDayCode(dateTime.DayOfWeek);
+        var vietnamDateTime = DateTimeUtc.ToVietnamLocal(dateTime);
 
-        string timeCode = dateTime.ToString(
+        string dayCode = GetDayCode(vietnamDateTime.DayOfWeek);
+
+        string timeCode = vietnamDateTime.ToString(
             "HHmm",
             CultureInfo.InvariantCulture
         );
