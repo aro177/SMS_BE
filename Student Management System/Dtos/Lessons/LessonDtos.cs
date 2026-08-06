@@ -1,3 +1,5 @@
+using Student_Management_System.Models.Enum;
+
 namespace Student_Management_System.Dtos.Lessons;
 
 public record LessonResponse(
@@ -10,7 +12,8 @@ public record LessonResponse(
     DateTime StartTime,
     DateTime EndTime,
     string Code,
-    bool TakeAttendanceStatus);
+    bool TakeAttendanceStatus,
+    RepeatStatus RepeatStatus);
 
 public record LessonAttendanceResponse(
     long Id,
@@ -26,6 +29,16 @@ public record TakeAttendanceStatusResponse(long LessonId, bool TakeAttendanceSta
 
 public record LessonFilter(DateTime? From, DateTime? To, long? TeacherId, long? ClassroomId);
 
-public record CreateLessonRequest(long ClassroomId, string? Title, DateTime StartTime, DateTime EndTime);
+public record CreateLessonRequest(
+    long ClassroomId,
+    string? Title,
+    DateTime StartTime,
+    DateTime EndTime,
+    RepeatStatus RepeatStatus);
 
-public record UpdateLessonRequest(long ClassroomId, string Title, DateTime StartTime, DateTime EndTime);
+public record UpdateLessonRequest(
+    long ClassroomId,
+    string Title,
+    DateTime StartTime,
+    DateTime EndTime,
+    RepeatStatus RepeatStatus);

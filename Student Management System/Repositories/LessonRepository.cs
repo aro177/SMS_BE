@@ -53,7 +53,8 @@ public class LessonRepository : ILessonRepository
                 lesson.StartTime,
                 lesson.EndTime,
                 lesson.Code,
-                lesson.TakeAttendanceStatus));
+                lesson.TakeAttendanceStatus,
+                lesson.RepeatStatus));
 
         var total = await projected.CountAsync();
         var items = await projected.Skip(pagination.Skip).Take(pagination.PageSize).ToListAsync();
