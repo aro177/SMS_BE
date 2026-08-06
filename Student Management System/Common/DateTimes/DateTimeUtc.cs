@@ -14,6 +14,11 @@ public static class DateTimeUtc
         return TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(time), VietnamTimeZone.Value);
     }
 
+    public static DateTime ToVietnamLocal(DateTime value)
+    {
+        return TimeZoneInfo.ConvertTimeFromUtc(Normalize(value), VietnamTimeZone.Value);
+    }
+
     public static DateTime? Normalize(DateTime? value)
     {
         return value is null ? null : Normalize(value.Value);
