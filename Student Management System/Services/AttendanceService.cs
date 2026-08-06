@@ -32,12 +32,17 @@ public class AttendanceService : IAttendanceService
         return _attendances.GetStudentHistoryAsync(studentId);
     }
 
-    public async Task<bool> MarkLessonAsync(long lessonId, BulkAttendanceRequest request)
+    public async Task<MarkAttendanceResult> MarkLessonAsync(long lessonId, BulkAttendanceRequest request)
     {
         var lesson = await _lessons.GetActiveByIdAsync(lessonId);
         if (lesson is null)
         {
-            return false;
+            return MarkAttendanceResult.LessonNotFound;
+        }
+
+        if (lesson.TakeAttendanceStatus)
+        {
+            return MarkAttendanceResult.AttendanceLocked;
         }
 
         foreach (var item in request.Items)
@@ -65,6 +70,6 @@ public class AttendanceService : IAttendanceService
         }
 
         await _attendances.SaveChangesAsync();
-        return true;
+        return MarkAttendanceResult.Success;
     }
 }

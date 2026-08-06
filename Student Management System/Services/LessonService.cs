@@ -68,6 +68,15 @@ public class LessonService : ILessonService
         return lessons.Items;
     }
 
+    public Task<IReadOnlyList<LessonResponse>> GetTodayAsync(DateOnly? date = null)
+    {
+        var targetDate = date ?? DateTimeUtc.TodayInVietnam();
+        var start = DateTimeUtc.FromVietnamLocal(targetDate, TimeOnly.MinValue);
+        var endExclusive = DateTimeUtc.FromVietnamLocal(targetDate.AddDays(1), TimeOnly.MinValue);
+
+        return _lessons.GetByStartRangeAsync(start, endExclusive);
+    }
+
     public async Task<LessonResponse?> CreateAsync(CreateLessonRequest request)
     {
         var startTime = request.StartTime.UtcDateTime;
@@ -123,6 +132,34 @@ public class LessonService : ILessonService
 
         await _lessons.SaveChangesAsync();
         return new TakeAttendanceStatusResponse(lesson.Id, lesson.TakeAttendanceStatus);
+    }
+
+    public async Task<BulkTakeAttendanceStatusResponse> ToggleTodayTakeAttendanceStatusAsync(
+        DateOnly? date = null)
+    {
+        var targetDate = date ?? DateTimeUtc.TodayInVietnam();
+        var start = DateTimeUtc.FromVietnamLocal(targetDate, TimeOnly.MinValue);
+        var endExclusive = DateTimeUtc.FromVietnamLocal(targetDate.AddDays(1), TimeOnly.MinValue);
+        var lessons = await _lessons.GetActiveEntitiesByStartRangeAsync(start, endExclusive);
+
+        var takeAttendanceStatus = lessons.Count > 0 && lessons.Any(lesson => !lesson.TakeAttendanceStatus);
+        var updatedAt = DateTime.UtcNow;
+
+        foreach (var lesson in lessons)
+        {
+            lesson.TakeAttendanceStatus = takeAttendanceStatus;
+            lesson.UpdatedAt = updatedAt;
+        }
+
+        if (lessons.Count > 0)
+        {
+            await _lessons.SaveChangesAsync();
+        }
+
+        return new BulkTakeAttendanceStatusResponse(
+            targetDate,
+            takeAttendanceStatus,
+            lessons.Count);
     }
 
     public async Task<bool> UpdateAsync(long id, UpdateLessonRequest request)

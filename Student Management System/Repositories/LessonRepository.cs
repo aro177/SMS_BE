@@ -41,25 +41,39 @@ public class LessonRepository : ILessonRepository
             query = query.Where(lesson => lesson.ClassroomId == filter.ClassroomId);
         }
 
-        var projected = query
-            .OrderBy(lesson => lesson.StartTime)
-            .Select(lesson => new LessonResponse(
-                lesson.Id,
-                lesson.ClassroomId,
-                lesson.Classroom.Name,
-                lesson.Classroom.TeacherId,
-                lesson.Classroom.Teacher == null ? null : lesson.Classroom.Teacher.Fullname,
-                lesson.Title,
-                lesson.StartTime,
-                lesson.EndTime,
-                lesson.Code,
-                lesson.TakeAttendanceStatus,
-                lesson.RepeatStatus));
+        var projected = ProjectResponses(query);
 
         var total = await projected.CountAsync();
         var items = await projected.Skip(pagination.Skip).Take(pagination.PageSize).ToListAsync();
 
         return new PagedResult<LessonResponse>(items, pagination.Page, pagination.PageSize, total);
+    }
+
+    public async Task<IReadOnlyList<LessonResponse>> GetByStartRangeAsync(
+        DateTime start,
+        DateTime endExclusive)
+    {
+        var query = _context.Lessons
+            .AsNoTracking()
+            .Where(lesson =>
+                !lesson.IsDeleted &&
+                lesson.StartTime >= start &&
+                lesson.StartTime < endExclusive);
+
+        return await ProjectResponses(query).ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<Lesson>> GetActiveEntitiesByStartRangeAsync(
+        DateTime start,
+        DateTime endExclusive)
+    {
+        return await _context.Lessons
+            .Where(lesson =>
+                !lesson.IsDeleted &&
+                lesson.StartTime >= start &&
+                lesson.StartTime < endExclusive)
+            .OrderBy(lesson => lesson.StartTime)
+            .ToListAsync();
     }
 
     public async Task<IReadOnlyList<LessonAttendanceResponse>> GetAttendancesAsync(long lessonId)
@@ -93,5 +107,23 @@ public class LessonRepository : ILessonRepository
     public Task SaveChangesAsync()
     {
         return _context.SaveChangesAsync();
+    }
+
+    private static IQueryable<LessonResponse> ProjectResponses(IQueryable<Lesson> query)
+    {
+        return query
+            .OrderBy(lesson => lesson.StartTime)
+            .Select(lesson => new LessonResponse(
+                lesson.Id,
+                lesson.ClassroomId,
+                lesson.Classroom.Name,
+                lesson.Classroom.TeacherId,
+                lesson.Classroom.Teacher == null ? null : lesson.Classroom.Teacher.Fullname,
+                lesson.Title,
+                lesson.StartTime,
+                lesson.EndTime,
+                lesson.Code,
+                lesson.TakeAttendanceStatus,
+                lesson.RepeatStatus));
     }
 }

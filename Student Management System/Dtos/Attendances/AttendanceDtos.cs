@@ -25,3 +25,10 @@ public record AttendanceMarkRequest(
     string? Note);
 
 public record BulkAttendanceRequest(IReadOnlyList<AttendanceMarkRequest> Items);
+
+public enum MarkAttendanceResult
+{
+    Success,
+    LessonNotFound,
+    AttendanceLocked
+}

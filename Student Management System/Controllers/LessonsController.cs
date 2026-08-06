@@ -25,6 +25,34 @@ public class LessonsController : ControllerBase
         return lessons is null ? NotFound("Teacher profile is not linked to this account.") : Ok(lessons);
     }
 
+    [Authorize(Roles = "ADMIN")]
+    [HttpGet("today")]
+    public async Task<IActionResult> GetToday([FromQuery] DateOnly? date)
+    {
+        return Ok(await _lessons.GetTodayAsync(date));
+    }
+
+    [Authorize(Roles = "ADMIN")]
+    [HttpGet("by-date")]
+    public async Task<IActionResult> GetByDate([FromQuery] DateOnly date)
+    {
+        return Ok(await _lessons.GetTodayAsync(date));
+    }
+
+    [Authorize(Roles = "ADMIN")]
+    [HttpPatch("today/take-attendance-status")]
+    public async Task<IActionResult> ToggleTodayTakeAttendanceStatus([FromQuery] DateOnly? date)
+    {
+        return Ok(await _lessons.ToggleTodayTakeAttendanceStatusAsync(date));
+    }
+
+    [Authorize(Roles = "ADMIN")]
+    [HttpPatch("by-date/take-attendance-status")]
+    public async Task<IActionResult> ToggleByDateTakeAttendanceStatus([FromQuery] DateOnly date)
+    {
+        return Ok(await _lessons.ToggleTodayTakeAttendanceStatusAsync(date));
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetLessons(
         [FromQuery] DateTime? from,
@@ -38,6 +66,7 @@ public class LessonsController : ControllerBase
     }
 
     [HttpGet("{lessonId:long}/attendances")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> GetAttendances(long lessonId)
     {
         var attendances = await _lessons.GetAttendancesAsync(lessonId);
@@ -45,6 +74,7 @@ public class LessonsController : ControllerBase
     }
 
     [HttpPatch("{lessonId:long}/take-attendance-status")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> ToggleTakeAttendanceStatus(long lessonId)
     {
         var result = await _lessons.ToggleTakeAttendanceStatusAsync(lessonId);
