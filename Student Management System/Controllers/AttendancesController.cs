@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Student_Management_System.Dtos.Attendances;
 using Student_Management_System.Services.Interfaces;
@@ -16,6 +17,7 @@ public class AttendancesController : ControllerBase
     }
 
     [HttpGet("lesson/{lessonId:long}")]
+    [Authorize(Roles = "TEACHER")]
     public async Task<IActionResult> GetLessonRoster(long lessonId)
     {
         var roster = await _attendances.GetLessonRosterAsync(lessonId);
@@ -23,9 +25,18 @@ public class AttendancesController : ControllerBase
     }
 
     [HttpPut("lesson/{lessonId:long}")]
+    [Authorize(Roles = "TEACHER")]
     public async Task<IActionResult> MarkLesson(long lessonId, BulkAttendanceRequest request)
     {
-        return await _attendances.MarkLessonAsync(lessonId, request) ? NoContent() : NotFound();
+        return await _attendances.MarkLessonAsync(lessonId, request) switch
+        {
+            MarkAttendanceResult.Success => NoContent(),
+            MarkAttendanceResult.AttendanceLocked => Conflict(new
+            {
+                message = "Attendance is locked for this lesson."
+            }),
+            _ => NotFound()
+        };
     }
 
     [HttpGet("student/{studentId:long}")]

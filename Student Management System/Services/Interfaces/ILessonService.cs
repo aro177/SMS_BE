@@ -8,7 +8,9 @@ public interface ILessonService
     Task<PagedResult<LessonResponse>> GetPagedAsync(LessonFilter filter, PaginationQuery pagination);
     Task<IReadOnlyList<LessonAttendanceResponse>?> GetAttendancesAsync(long lessonId);
     Task<IReadOnlyList<LessonResponse>?> GetTodayForCurrentTeacherAsync(DateOnly? date = null);
+    Task<IReadOnlyList<LessonResponse>> GetTodayAsync(DateOnly? date = null);
     Task<TakeAttendanceStatusResponse?> ToggleTakeAttendanceStatusAsync(long lessonId);
+    Task<BulkTakeAttendanceStatusResponse> ToggleTodayTakeAttendanceStatusAsync(DateOnly? date = null);
     Task<LessonResponse?> CreateAsync(CreateLessonRequest request);
     Task<bool> UpdateAsync(long id, UpdateLessonRequest request);
     Task<bool> DeleteAsync(long id);

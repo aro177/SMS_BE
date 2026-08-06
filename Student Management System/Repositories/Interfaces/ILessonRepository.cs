@@ -7,6 +7,8 @@ namespace Student_Management_System.Repositories.Interfaces;
 public interface ILessonRepository
 {
     Task<PagedResult<LessonResponse>> GetPagedAsync(LessonFilter filter, PaginationQuery pagination);
+    Task<IReadOnlyList<LessonResponse>> GetByStartRangeAsync(DateTime start, DateTime endExclusive);
+    Task<IReadOnlyList<Lesson>> GetActiveEntitiesByStartRangeAsync(DateTime start, DateTime endExclusive);
     Task<IReadOnlyList<LessonAttendanceResponse>> GetAttendancesAsync(long lessonId);
     Task<Lesson?> GetActiveByIdAsync(long id);
     void Add(Lesson lesson);

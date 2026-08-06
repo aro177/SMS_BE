@@ -27,6 +27,11 @@ public record LessonAttendanceResponse(
 
 public record TakeAttendanceStatusResponse(long LessonId, bool TakeAttendanceStatus);
 
+public record BulkTakeAttendanceStatusResponse(
+    DateOnly Date,
+    bool TakeAttendanceStatus,
+    int UpdatedLessons);
+
 public record LessonFilter(DateTime? From, DateTime? To, long? TeacherId, long? ClassroomId);
 
 public record CreateLessonRequest(
