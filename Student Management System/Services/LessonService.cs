@@ -70,8 +70,8 @@ public class LessonService : ILessonService
 
     public async Task<LessonResponse?> CreateAsync(CreateLessonRequest request)
     {
-        var startTime = DateTimeUtc.Normalize(request.StartTime);
-        var endTime = DateTimeUtc.Normalize(request.EndTime);
+        var startTime = request.StartTime.UtcDateTime;
+        var endTime = request.EndTime.UtcDateTime;
         var classroom = await _classrooms.GetActiveByIdAsync(request.ClassroomId);
         if (classroom is null || endTime <= startTime || !Enum.IsDefined(request.RepeatStatus))
         {
@@ -127,8 +127,8 @@ public class LessonService : ILessonService
 
     public async Task<bool> UpdateAsync(long id, UpdateLessonRequest request)
     {
-        var startTime = DateTimeUtc.Normalize(request.StartTime);
-        var endTime = DateTimeUtc.Normalize(request.EndTime);
+        var startTime = request.StartTime.UtcDateTime;
+        var endTime = request.EndTime.UtcDateTime;
         var lesson = await _lessons.GetActiveByIdAsync(id);
         var classroom = await _classrooms.GetActiveByIdAsync(request.ClassroomId);
         if (lesson is null || classroom is null || endTime <= startTime || !Enum.IsDefined(request.RepeatStatus))

@@ -30,6 +30,7 @@ services:
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
     environment:
       INTERNAL_API_URL: http://studentmanagementsystem:8080
+      TZ: Asia/Ho_Chi_Minh
       NEXT_PUBLIC_SITE_URL: https://${PUBLIC_DOMAIN}
       NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}

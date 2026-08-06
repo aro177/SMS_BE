@@ -32,13 +32,13 @@ public record LessonFilter(DateTime? From, DateTime? To, long? TeacherId, long? 
 public record CreateLessonRequest(
     long ClassroomId,
     string? Title,
-    DateTime StartTime,
-    DateTime EndTime,
+    DateTimeOffset StartTime,
+    DateTimeOffset EndTime,
     RepeatStatus RepeatStatus);
 
 public record UpdateLessonRequest(
     long ClassroomId,
     string Title,
-    DateTime StartTime,
-    DateTime EndTime,
+    DateTimeOffset StartTime,
+    DateTimeOffset EndTime,
     RepeatStatus RepeatStatus);
