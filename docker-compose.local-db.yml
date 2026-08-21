@@ -19,7 +19,7 @@ services:
       retries: 20
     networks:
       app_network:
-	ipv4_address: 172.30.0.5
+        ipv4_address: 172.30.0.5
     restart: unless-stopped
 
   studentmanagementsystem:
