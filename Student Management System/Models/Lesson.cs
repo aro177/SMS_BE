@@ -22,6 +22,8 @@ public partial class Lesson
 
     public RepeatStatus RepeatStatus { get; set; } = Models.Enum.RepeatStatus.TEMPORARY;
 
+    public Guid? SeriesId { get; set; }
+
     public string? Code { get; set; }
 
     public DateTime CreatedAt { get; set; }

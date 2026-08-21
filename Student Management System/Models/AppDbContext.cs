@@ -166,6 +166,9 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.Id, "idx_lessons_active").HasFilter("(is_deleted = false)");
 
+            entity.HasIndex(e => e.SeriesId, "idx_lessons_series_id_active")
+                .HasFilter("((is_deleted = false) AND (series_id IS NOT NULL))");
+
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.ClassroomId).HasColumnName("classroom_id");
             entity.Property(e => e.CreatedAt)
@@ -178,6 +181,8 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.StartTime).HasColumnName("start_time");
             entity.Property(e => e.RepeatStatus)
                 .HasColumnName("repeat_status");
+            entity.Property(e => e.SeriesId)
+                .HasColumnName("series_id");
             entity.Property(e => e.TakeAttendanceStatus)
                 .HasDefaultValue(false)
                 .HasColumnName("take_attendance_status");

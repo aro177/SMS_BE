@@ -99,6 +99,19 @@ public class LessonRepository : ILessonRepository
         return _context.Lessons.FirstOrDefaultAsync(item => item.Id == id && !item.IsDeleted);
     }
 
+    public async Task<IReadOnlyList<Lesson>> GetActiveBySeriesIdAsync(Guid seriesId)
+    {
+        return await _context.Lessons
+            .Where(lesson => !lesson.IsDeleted && lesson.SeriesId == seriesId)
+            .OrderBy(lesson => lesson.StartTime)
+            .ToListAsync();
+    }
+
+    public Task<bool> HasAnyAttendanceHistoryAsync(IReadOnlyCollection<long> lessonIds)
+    {
+        return _context.Attendances.AnyAsync(attendance => lessonIds.Contains(attendance.LessonId));
+    }
+
     public void Add(Lesson lesson)
     {
         _context.Lessons.Add(lesson);
@@ -129,6 +142,7 @@ public class LessonRepository : ILessonRepository
                 lesson.EndTime,
                 lesson.Code,
                 lesson.TakeAttendanceStatus,
-                lesson.RepeatStatus));
+                lesson.RepeatStatus,
+                lesson.SeriesId));
     }
 }

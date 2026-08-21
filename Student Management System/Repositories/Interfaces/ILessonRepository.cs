@@ -11,6 +11,8 @@ public interface ILessonRepository
     Task<IReadOnlyList<Lesson>> GetActiveEntitiesByStartRangeAsync(DateTime start, DateTime endExclusive);
     Task<IReadOnlyList<LessonAttendanceResponse>> GetAttendancesAsync(long lessonId);
     Task<Lesson?> GetActiveByIdAsync(long id);
+    Task<IReadOnlyList<Lesson>> GetActiveBySeriesIdAsync(Guid seriesId);
+    Task<bool> HasAnyAttendanceHistoryAsync(IReadOnlyCollection<long> lessonIds);
     void Add(Lesson lesson);
     void AddRange(IEnumerable<Lesson> lessons);
     Task SaveChangesAsync();
