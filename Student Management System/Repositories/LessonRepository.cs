@@ -104,6 +104,11 @@ public class LessonRepository : ILessonRepository
         _context.Lessons.Add(lesson);
     }
 
+    public void AddRange(IEnumerable<Lesson> lessons)
+    {
+        _context.Lessons.AddRange(lessons);
+    }
+
     public Task SaveChangesAsync()
     {
         return _context.SaveChangesAsync();

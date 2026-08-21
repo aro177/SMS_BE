@@ -34,12 +34,31 @@ public record BulkTakeAttendanceStatusResponse(
 
 public record LessonFilter(DateTime? From, DateTime? To, long? TeacherId, long? ClassroomId);
 
+public enum RecurrenceEndType
+{
+    Never,
+    OnDate,
+    AfterOccurrences
+}
+
+public record CustomLessonRecurrenceRequest(
+    int IntervalWeeks,
+    IReadOnlyList<DayOfWeek> Weekdays,
+    RecurrenceEndType EndType,
+    DateOnly? EndDate,
+    int? OccurrenceCount);
+
+public record CreateLessonsResponse(
+    IReadOnlyList<LessonResponse> Lessons,
+    int CreatedCount);
+
 public record CreateLessonRequest(
     long ClassroomId,
     string? Title,
     DateTimeOffset StartTime,
     DateTimeOffset EndTime,
-    RepeatStatus RepeatStatus);
+    RepeatStatus RepeatStatus,
+    CustomLessonRecurrenceRequest? Recurrence);
 
 public record UpdateLessonRequest(
     long ClassroomId,
