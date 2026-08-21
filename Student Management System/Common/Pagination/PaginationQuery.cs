@@ -2,7 +2,7 @@ namespace Student_Management_System.Common.Pagination;
 
 public class PaginationQuery
 {
-    private const int MaxPageSize = 100;
+    private const int MaxPageSize = 500;
     private int _page = 1;
     private int _pageSize = 20;
 

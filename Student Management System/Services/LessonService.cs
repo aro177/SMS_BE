@@ -3,6 +3,7 @@ using Student_Management_System.Common.Pagination;
 using Student_Management_System.Configs.HttpContext;
 using Student_Management_System.Dtos.Lessons;
 using Student_Management_System.Models;
+using Student_Management_System.Models.Enum;
 using Student_Management_System.Repositories.Interfaces;
 using Student_Management_System.Services.Interfaces;
 using System.Globalization;
@@ -12,6 +13,9 @@ namespace Student_Management_System.Services;
 
 public class LessonService : ILessonService
 {
+    private const int MaxGeneratedOccurrences = 500;
+    private const int MaxNeverWeeks = 20;
+
     private readonly IClassroomRepository _classrooms;
     private readonly ICurrentUserService _currentUser;
     private readonly ILessonRepository _lessons;
@@ -77,7 +81,7 @@ public class LessonService : ILessonService
         return _lessons.GetByStartRangeAsync(start, endExclusive);
     }
 
-    public async Task<LessonResponse?> CreateAsync(CreateLessonRequest request)
+    public async Task<CreateLessonsResponse?> CreateAsync(CreateLessonRequest request)
     {
         var startTime = request.StartTime.UtcDateTime;
         var endTime = request.EndTime.UtcDateTime;
@@ -87,36 +91,45 @@ public class LessonService : ILessonService
             return null;
         }
 
-        string classroomName = classroom.Name;
-        string code = GenerateCode(classroomName, startTime);
+        var occurrenceStartTimes = BuildOccurrenceStartTimes(request, startTime);
+        if (occurrenceStartTimes is null || occurrenceStartTimes.Count == 0)
+        {
+            return null;
+        }
 
-        var lesson = new Lesson
+        var duration = endTime - startTime;
+        var now = DateTime.UtcNow;
+        var title = string.IsNullOrWhiteSpace(request.Title) ? classroom.Name : request.Title.Trim();
+        var lessons = occurrenceStartTimes.Select(occurrenceStartTime => new Lesson
         {
             ClassroomId = request.ClassroomId,
-            Title = string.IsNullOrWhiteSpace(request.Title) ? classroom.Name : request.Title.Trim(),
-            StartTime = startTime,
-            EndTime = endTime,
+            Title = title,
+            StartTime = occurrenceStartTime,
+            EndTime = occurrenceStartTime.Add(duration),
             RepeatStatus = request.RepeatStatus,
-            Code = code,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            Code = GenerateCode(classroom.Name, occurrenceStartTime),
+            CreatedAt = now,
+            UpdatedAt = now
+        }).ToList();
 
-        _lessons.Add(lesson);
+        _lessons.AddRange(lessons);
         await _lessons.SaveChangesAsync();
 
-        return new LessonResponse(
-            lesson.Id,
-            lesson.ClassroomId,
-            classroom.Name,
-            classroom.TeacherId,
-            classroom.Teacher?.Fullname,
-            lesson.Title,
-            lesson.StartTime,
-            lesson.EndTime,
-            lesson.Code,
-            lesson.TakeAttendanceStatus,
-            lesson.RepeatStatus);
+        var responses = lessons.Select(lesson => new LessonResponse(
+                lesson.Id,
+                lesson.ClassroomId,
+                classroom.Name,
+                classroom.TeacherId,
+                classroom.Teacher?.Fullname,
+                lesson.Title,
+                lesson.StartTime,
+                lesson.EndTime,
+                lesson.Code ?? string.Empty,
+                lesson.TakeAttendanceStatus,
+                lesson.RepeatStatus))
+            .ToList();
+
+        return new CreateLessonsResponse(responses, responses.Count);
     }
 
     public async Task<TakeAttendanceStatusResponse?> ToggleTakeAttendanceStatusAsync(long lessonId)
@@ -203,6 +216,110 @@ public class LessonService : ILessonService
 
         await _lessons.SaveChangesAsync();
         return true;
+    }
+
+    private static IReadOnlyList<DateTime>? BuildOccurrenceStartTimes(
+        CreateLessonRequest request,
+        DateTime startTime)
+    {
+        if (request.RepeatStatus == RepeatStatus.TEMPORARY)
+        {
+            return [startTime];
+        }
+
+        var localStart = DateTimeUtc.ToVietnamLocal(startTime);
+        var startDate = DateOnly.FromDateTime(localStart);
+        var startTimeOfDay = TimeOnly.FromDateTime(localStart);
+        var recurrence = request.Recurrence ?? new CustomLessonRecurrenceRequest(
+            1,
+            [localStart.DayOfWeek],
+            RecurrenceEndType.Never,
+            null,
+            null);
+
+        if (recurrence.IntervalWeeks is < 1 or > 20 ||
+            recurrence.Weekdays is null ||
+            recurrence.Weekdays.Count == 0 ||
+            recurrence.Weekdays.Any(day => !Enum.IsDefined(day)) ||
+            !Enum.IsDefined(recurrence.EndType))
+        {
+            return null;
+        }
+
+        var weekdays = recurrence.Weekdays.Distinct().ToHashSet();
+        DateOnly? lastDate = recurrence.EndType == RecurrenceEndType.OnDate
+            ? recurrence.EndDate
+            : null;
+        if (recurrence.EndType == RecurrenceEndType.Never)
+        {
+            var horizonDays = MaxNeverWeeks * 7 - 1;
+            if (startDate.DayNumber > DateOnly.MaxValue.DayNumber - horizonDays)
+            {
+                return null;
+            }
+
+            lastDate = startDate.AddDays(horizonDays);
+        }
+
+        if (recurrence.EndType == RecurrenceEndType.OnDate &&
+            (lastDate is null || lastDate < startDate))
+        {
+            return null;
+        }
+
+        var targetCount = recurrence.EndType == RecurrenceEndType.AfterOccurrences
+            ? recurrence.OccurrenceCount
+            : null;
+        if (recurrence.EndType == RecurrenceEndType.AfterOccurrences &&
+            (targetCount is null or < 1 or > MaxGeneratedOccurrences))
+        {
+            return null;
+        }
+
+        var anchorMonday = GetMonday(startDate);
+        var occurrences = new List<DateTime>();
+        for (var date = startDate; ;)
+        {
+            if (lastDate is not null && date > lastDate)
+            {
+                break;
+            }
+
+            var weekOffset = (GetMonday(date).DayNumber - anchorMonday.DayNumber) / 7;
+            if (weekOffset % recurrence.IntervalWeeks == 0 && weekdays.Contains(date.DayOfWeek))
+            {
+                occurrences.Add(DateTimeUtc.FromVietnamLocal(date, startTimeOfDay));
+                if (targetCount is not null && occurrences.Count == targetCount)
+                {
+                    break;
+                }
+
+                if (occurrences.Count > MaxGeneratedOccurrences)
+                {
+                    return null;
+                }
+            }
+
+            if (lastDate is not null && date == lastDate)
+            {
+                break;
+            }
+
+            if (date == DateOnly.MaxValue)
+            {
+                return null;
+            }
+
+            date = date.AddDays(1);
+        }
+
+        return occurrences.Count == 0 ? null : occurrences;
+    }
+
+    private static DateOnly GetMonday(DateOnly date)
+    {
+        var daysSinceMonday = ((int)date.DayOfWeek + 6) % 7;
+        return date.AddDays(-daysSinceMonday);
     }
 
     private string GenerateCode(string classroomName, DateTime dateTime)

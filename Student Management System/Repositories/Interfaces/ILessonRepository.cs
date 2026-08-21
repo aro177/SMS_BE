@@ -12,5 +12,6 @@ public interface ILessonRepository
     Task<IReadOnlyList<LessonAttendanceResponse>> GetAttendancesAsync(long lessonId);
     Task<Lesson?> GetActiveByIdAsync(long id);
     void Add(Lesson lesson);
+    void AddRange(IEnumerable<Lesson> lessons);
     Task SaveChangesAsync();
 }

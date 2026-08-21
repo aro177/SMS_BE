@@ -85,7 +85,12 @@ public class LessonsController : ControllerBase
     public async Task<IActionResult> CreateLesson(CreateLessonRequest request)
     {
         var lesson = await _lessons.CreateAsync(request);
-        return lesson is null ? BadRequest("Classroom not found or invalid lesson time.") : CreatedAtAction(nameof(GetLessons), new { id = lesson.Id }, lesson);
+        return lesson is null
+            ? BadRequest("Classroom, lesson time, or recurrence settings are invalid.")
+            : CreatedAtAction(
+                nameof(GetLessons),
+                new { id = lesson.Lessons[0].Id },
+                lesson);
     }
 
     [HttpPut("{id:long}")]

@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: sms_local
+      POSTGRES_USER: sms
+      POSTGRES_PASSWORD_FILE: /run/secrets/local_postgres_password
+      TZ: Asia/Ho_Chi_Minh
+    secrets:
+      - local_postgres_password
+    ports:
+      - "127.0.0.1:${LOCAL_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - local_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sms -d sms_local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  studentmanagementsystem:
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  db-import:
+    image: postgres:17-alpine
+    profiles: ["db-tools"]
+    environment:
+      LOCAL_DB_HOST: postgres
+      LOCAL_DB_PORT: 5432
+      LOCAL_DB_NAME: sms_local
+      LOCAL_DB_USER: sms
+    secrets:
+      - local_postgres_password
+      - supabase_remote_db_uri
+    volumes:
+      - ./scripts/import-supabase-public.sh:/usr/local/bin/import-supabase-public.sh:ro
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "/usr/local/bin/import-supabase-public.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app_network
+    restart: "no"
+
+secrets:
+  # Overrides the base Compose secret so the API connects to PostgreSQL local.
+  db_connection:
+    file: ./secrets/local_db_connection.txt
+  local_postgres_password:
+    file: ./secrets/local_postgres_password.txt
+  supabase_remote_db_uri:
+    file: ./secrets/supabase_remote_db_uri.txt
+
+volumes:
+  local_postgres_data:

@@ -16,6 +16,7 @@
 !.env.example
 secrets/*
 !secrets/README.md
+backups/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

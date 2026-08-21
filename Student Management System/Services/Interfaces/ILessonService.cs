@@ -11,7 +11,7 @@ public interface ILessonService
     Task<IReadOnlyList<LessonResponse>> GetTodayAsync(DateOnly? date = null);
     Task<TakeAttendanceStatusResponse?> ToggleTakeAttendanceStatusAsync(long lessonId);
     Task<BulkTakeAttendanceStatusResponse> ToggleTodayTakeAttendanceStatusAsync(DateOnly? date = null);
-    Task<LessonResponse?> CreateAsync(CreateLessonRequest request);
+    Task<CreateLessonsResponse?> CreateAsync(CreateLessonRequest request);
     Task<bool> UpdateAsync(long id, UpdateLessonRequest request);
     Task<bool> DeleteAsync(long id);
 }
