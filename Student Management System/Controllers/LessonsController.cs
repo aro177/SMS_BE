@@ -100,8 +100,27 @@ public class LessonsController : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
-    public async Task<IActionResult> DeleteLesson(long id)
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> DeleteLesson(
+        long id,
+        [FromQuery] LessonDeleteScope scope = LessonDeleteScope.ThisEvent)
     {
-        return await _lessons.DeleteAsync(id) ? NoContent() : NotFound();
+        var result = await _lessons.DeleteAsync(id, scope);
+        return result.Outcome switch
+        {
+            LessonDeleteOutcome.Deleted => Ok(new DeleteLessonsResponse(
+                result.DeletedLessonIds,
+                result.DeletedLessonIds.Count)),
+            LessonDeleteOutcome.NotFound => NotFound(new { message = "Lesson not found." }),
+            LessonDeleteOutcome.AttendanceHistoryExists => Conflict(new
+            {
+                message = "Cannot delete because at least one selected lesson has attendance history."
+            }),
+            LessonDeleteOutcome.SeriesUnavailable => Conflict(new
+            {
+                message = "This legacy lesson is not linked to a recurring series. Delete only this event."
+            }),
+            _ => BadRequest(new { message = "The delete scope is invalid for this lesson." })
+        };
     }
 }

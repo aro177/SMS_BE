@@ -13,5 +13,5 @@ public interface ILessonService
     Task<BulkTakeAttendanceStatusResponse> ToggleTodayTakeAttendanceStatusAsync(DateOnly? date = null);
     Task<CreateLessonsResponse?> CreateAsync(CreateLessonRequest request);
     Task<bool> UpdateAsync(long id, UpdateLessonRequest request);
-    Task<bool> DeleteAsync(long id);
+    Task<LessonDeleteResult> DeleteAsync(long id, LessonDeleteScope scope);
 }

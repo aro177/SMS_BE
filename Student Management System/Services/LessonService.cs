@@ -14,7 +14,7 @@ namespace Student_Management_System.Services;
 public class LessonService : ILessonService
 {
     private const int MaxGeneratedOccurrences = 500;
-    private const int MaxNeverWeeks = 20;
+    private const int MaxRepeatWeeks = 20;
 
     private readonly IClassroomRepository _classrooms;
     private readonly ICurrentUserService _currentUser;
@@ -100,6 +100,7 @@ public class LessonService : ILessonService
         var duration = endTime - startTime;
         var now = DateTime.UtcNow;
         var title = string.IsNullOrWhiteSpace(request.Title) ? classroom.Name : request.Title.Trim();
+        var seriesId = request.RepeatStatus == RepeatStatus.FIXED ? Guid.NewGuid() : (Guid?)null;
         var lessons = occurrenceStartTimes.Select(occurrenceStartTime => new Lesson
         {
             ClassroomId = request.ClassroomId,
@@ -107,6 +108,7 @@ public class LessonService : ILessonService
             StartTime = occurrenceStartTime,
             EndTime = occurrenceStartTime.Add(duration),
             RepeatStatus = request.RepeatStatus,
+            SeriesId = seriesId,
             Code = GenerateCode(classroom.Name, occurrenceStartTime),
             CreatedAt = now,
             UpdatedAt = now
@@ -126,7 +128,8 @@ public class LessonService : ILessonService
                 lesson.EndTime,
                 lesson.Code ?? string.Empty,
                 lesson.TakeAttendanceStatus,
-                lesson.RepeatStatus))
+                lesson.RepeatStatus,
+                lesson.SeriesId))
             .ToList();
 
         return new CreateLessonsResponse(responses, responses.Count);
@@ -193,6 +196,9 @@ public class LessonService : ILessonService
         lesson.StartTime = startTime;
         lesson.EndTime = endTime;
         lesson.RepeatStatus = request.RepeatStatus;
+        lesson.SeriesId = request.RepeatStatus == RepeatStatus.FIXED
+            ? lesson.SeriesId ?? Guid.NewGuid()
+            : null;
         if (startTimeChanged)
         {
             lesson.Code = GenerateCode(classroom.Name, startTime);
@@ -203,19 +209,57 @@ public class LessonService : ILessonService
         return true;
     }
 
-    public async Task<bool> DeleteAsync(long id)
+    public async Task<LessonDeleteResult> DeleteAsync(long id, LessonDeleteScope scope)
     {
+        if (!Enum.IsDefined(scope))
+        {
+            return new LessonDeleteResult(LessonDeleteOutcome.InvalidScope, []);
+        }
+
         var lesson = await _lessons.GetActiveByIdAsync(id);
         if (lesson is null)
         {
-            return false;
+            return new LessonDeleteResult(LessonDeleteOutcome.NotFound, []);
         }
 
-        lesson.IsDeleted = true;
-        lesson.UpdatedAt = DateTime.UtcNow;
+        IReadOnlyList<Lesson> lessonsToDelete;
+        if (scope == LessonDeleteScope.ThisEvent)
+        {
+            lessonsToDelete = [lesson];
+        }
+        else
+        {
+            if (lesson.RepeatStatus != RepeatStatus.FIXED)
+            {
+                return new LessonDeleteResult(LessonDeleteOutcome.InvalidScope, []);
+            }
+
+            if (lesson.SeriesId is null)
+            {
+                return new LessonDeleteResult(LessonDeleteOutcome.SeriesUnavailable, []);
+            }
+
+            var seriesLessons = await _lessons.GetActiveBySeriesIdAsync(lesson.SeriesId.Value);
+            lessonsToDelete = scope == LessonDeleteScope.ThisAndFollowing
+                ? seriesLessons.Where(item => item.StartTime >= lesson.StartTime).ToList()
+                : seriesLessons;
+        }
+
+        var lessonIds = lessonsToDelete.Select(item => item.Id).ToArray();
+        if (await _lessons.HasAnyAttendanceHistoryAsync(lessonIds))
+        {
+            return new LessonDeleteResult(LessonDeleteOutcome.AttendanceHistoryExists, []);
+        }
+
+        var updatedAt = DateTime.UtcNow;
+        foreach (var item in lessonsToDelete)
+        {
+            item.IsDeleted = true;
+            item.UpdatedAt = updatedAt;
+        }
 
         await _lessons.SaveChangesAsync();
-        return true;
+        return new LessonDeleteResult(LessonDeleteOutcome.Deleted, lessonIds);
     }
 
     private static IReadOnlyList<DateTime>? BuildOccurrenceStartTimes(
@@ -233,11 +277,11 @@ public class LessonService : ILessonService
         var recurrence = request.Recurrence ?? new CustomLessonRecurrenceRequest(
             1,
             [localStart.DayOfWeek],
-            RecurrenceEndType.Never,
+            RecurrenceEndType.AfterWeeks,
             null,
             null);
 
-        if (recurrence.IntervalWeeks is < 1 or > 20 ||
+        if (recurrence.RepeatWeeks is < 1 or > MaxRepeatWeeks ||
             recurrence.Weekdays is null ||
             recurrence.Weekdays.Count == 0 ||
             recurrence.Weekdays.Any(day => !Enum.IsDefined(day)) ||
@@ -247,22 +291,19 @@ public class LessonService : ILessonService
         }
 
         var weekdays = recurrence.Weekdays.Distinct().ToHashSet();
-        DateOnly? lastDate = recurrence.EndType == RecurrenceEndType.OnDate
-            ? recurrence.EndDate
-            : null;
-        if (recurrence.EndType == RecurrenceEndType.Never)
+        var horizonDays = recurrence.RepeatWeeks * 7 - 1;
+        if (startDate.DayNumber > DateOnly.MaxValue.DayNumber - horizonDays)
         {
-            var horizonDays = MaxNeverWeeks * 7 - 1;
-            if (startDate.DayNumber > DateOnly.MaxValue.DayNumber - horizonDays)
-            {
-                return null;
-            }
-
-            lastDate = startDate.AddDays(horizonDays);
+            return null;
         }
 
+        var repeatWindowEnd = startDate.AddDays(horizonDays);
+        var lastDate = recurrence.EndType == RecurrenceEndType.OnDate
+            ? recurrence.EndDate
+            : repeatWindowEnd;
+
         if (recurrence.EndType == RecurrenceEndType.OnDate &&
-            (lastDate is null || lastDate < startDate))
+            (lastDate is null || lastDate < startDate || lastDate > repeatWindowEnd))
         {
             return null;
         }
@@ -276,7 +317,6 @@ public class LessonService : ILessonService
             return null;
         }
 
-        var anchorMonday = GetMonday(startDate);
         var occurrences = new List<DateTime>();
         for (var date = startDate; ;)
         {
@@ -285,8 +325,7 @@ public class LessonService : ILessonService
                 break;
             }
 
-            var weekOffset = (GetMonday(date).DayNumber - anchorMonday.DayNumber) / 7;
-            if (weekOffset % recurrence.IntervalWeeks == 0 && weekdays.Contains(date.DayOfWeek))
+            if (weekdays.Contains(date.DayOfWeek))
             {
                 occurrences.Add(DateTimeUtc.FromVietnamLocal(date, startTimeOfDay));
                 if (targetCount is not null && occurrences.Count == targetCount)
@@ -313,13 +352,12 @@ public class LessonService : ILessonService
             date = date.AddDays(1);
         }
 
-        return occurrences.Count == 0 ? null : occurrences;
-    }
+        if (targetCount is not null && occurrences.Count != targetCount)
+        {
+            return null;
+        }
 
-    private static DateOnly GetMonday(DateOnly date)
-    {
-        var daysSinceMonday = ((int)date.DayOfWeek + 6) % 7;
-        return date.AddDays(-daysSinceMonday);
+        return occurrences.Count == 0 ? null : occurrences;
     }
 
     private string GenerateCode(string classroomName, DateTime dateTime)

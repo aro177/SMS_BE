@@ -13,7 +13,8 @@ public record LessonResponse(
     DateTime EndTime,
     string Code,
     bool TakeAttendanceStatus,
-    RepeatStatus RepeatStatus);
+    RepeatStatus RepeatStatus,
+    Guid? SeriesId);
 
 public record LessonAttendanceResponse(
     long Id,
@@ -36,13 +37,13 @@ public record LessonFilter(DateTime? From, DateTime? To, long? TeacherId, long? 
 
 public enum RecurrenceEndType
 {
-    Never,
+    AfterWeeks,
     OnDate,
     AfterOccurrences
 }
 
 public record CustomLessonRecurrenceRequest(
-    int IntervalWeeks,
+    int RepeatWeeks,
     IReadOnlyList<DayOfWeek> Weekdays,
     RecurrenceEndType EndType,
     DateOnly? EndDate,
@@ -51,6 +52,30 @@ public record CustomLessonRecurrenceRequest(
 public record CreateLessonsResponse(
     IReadOnlyList<LessonResponse> Lessons,
     int CreatedCount);
+
+public enum LessonDeleteScope
+{
+    ThisEvent,
+    ThisAndFollowing,
+    EntireSeries
+}
+
+public enum LessonDeleteOutcome
+{
+    Deleted,
+    NotFound,
+    AttendanceHistoryExists,
+    SeriesUnavailable,
+    InvalidScope
+}
+
+public record LessonDeleteResult(
+    LessonDeleteOutcome Outcome,
+    IReadOnlyList<long> DeletedLessonIds);
+
+public record DeleteLessonsResponse(
+    IReadOnlyList<long> DeletedLessonIds,
+    int DeletedCount);
 
 public record CreateLessonRequest(
     long ClassroomId,
